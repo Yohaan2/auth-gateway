@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # BASE DE DATOS (POSTGRESQL)
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: auth-optrax-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-auth_optrax}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-auth_optrax}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - optrax-network
+
+  # ==========================================
+  # SERVIDOR DE IDENTIDAD (KEYCLOAK)
+  # ==========================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: auth-optrax-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_PROXY: "edge" # Permite a Keycloak funcionar detrás del reverse proxy de Nginx
+    ports:
+      - "8080:8080"
+    volumes:
+      # Si se desea importar un Realm pre-configurado de prueba
+      - ./keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
+    networks:
+      - optrax-network
+
+  # ==========================================
+  # APLICACIÓN NODE/EXPRESS + REACT (APP)
+  # ==========================================
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: auth-optrax-app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      APP_URL: http://localhost # Acceso a través de Nginx (puerto 80)
+      SESSION_SECRET: ${SESSION_SECRET}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auth_optrax}
+      KEYCLOAK_URL: http://localhost:8080 # Para redirecciones del navegador (red externa)
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080 # Para llamadas directas backend-to-backend (red interna docker)
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-optrax-realm}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-optrax-app}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_REDIRECT_URI: http://localhost/api/auth/callback # Callback a través del proxy Nginx
+      KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost/ # Redirección logout a través de Nginx
+    ports:
+      - "3000:3000"
+    networks:
+      - optrax-network
+
+  # ==========================================
+  # PROXY REVERSO (NGINX)
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: auth-optrax-nginx
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - optrax-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  optrax-network:
+    driver: bridge

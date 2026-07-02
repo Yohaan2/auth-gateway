@@ -1,0 +1,22 @@
+{
+  "name": "auth-optrax-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scaffold full-stack para autenticación con Keycloak usando Node.js/Express (Vite middleware) y React.",
+  "scripts": {
+    "dev": "npm run dev --workspace=server",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspace=server",
+    "lint": "npm run lint --workspaces",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\""
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  }
+}

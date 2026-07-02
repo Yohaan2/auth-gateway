@@ -1,0 +1,118 @@
+import express from "express";
+import { createServer } from "http";
+import session from "express-session";
+import cors from "cors";
+import path from "path";
+
+// Configuración y variables de entorno
+import { env } from "./config/env";
+
+// Logger y middlewares
+import { logger, httpLogger } from "./middlewares/logger";
+import { errorHandler } from "./middlewares/errorHandler";
+
+// Base de datos
+import { checkDbConnection, pool } from "./db/client";
+
+// Rutas de autenticación
+import authRouter from "./auth/routes";
+
+// Servidor estático de producción
+import { serveStatic } from "./static";
+
+async function startServer() {
+  const app = express();
+  const httpServer = createServer(app);
+
+  // 1. Configuración de CORS básico
+  app.use(
+    cors({
+      origin: env.APP_URL,
+      credentials: true,
+    })
+  );
+
+  // 2. Parsers para JSON y URL-encoded
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // 3. Configuración del logger HTTP
+  app.use(httpLogger);
+
+  // 4. Configuración del almacenamiento de sesión (express-session)
+  // Por defecto usa MemoryStore en desarrollo. Se provee la configuración para PostgreSQL
+  // usando 'connect-pg-simple' lista para descomentar en producción.
+  let sessionStore: session.Store | undefined;
+
+  if (env.NODE_ENV === "production") {
+    logger.info("📦 Configurando Session Store persistente con PostgreSQL para producción...");
+    const PgSession = require("connect-pg-simple")(session);
+    sessionStore = new PgSession({
+      pool: pool,
+      tableName: "session", // Requiere crear la tabla en la base de datos (ver README)
+      createTableIfMissing: true,
+    });
+  } else {
+    logger.info("💾 Usando MemoryStore para sesiones (desarrollo).");
+  }
+
+  app.use(
+    session({
+      store: sessionStore,
+      secret: env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: env.NODE_ENV === "production" && env.APP_URL.startsWith("https"),
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        sameSite: "lax",
+      },
+    })
+  );
+
+  // 5. Probar la conexión a la base de datos PostgreSQL
+  logger.info("🔌 Probando conexión a la Base de Datos PostgreSQL...");
+  const dbConnected = await checkDbConnection();
+  if (dbConnected) {
+    logger.info("✅ Conexión a PostgreSQL establecida con éxito.");
+  } else {
+    logger.warn("⚠️  No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
+  }
+
+  // 6. Rutas de la API de Autenticación
+  app.use("/api/auth", authRouter);
+
+  // Endpoint básico de Health Check de la API
+  app.get("/api/health", async (_req, res) => {
+    res.status(200).json({
+      status: "ok",
+      environment: env.NODE_ENV,
+      database: dbConnected ? "connected" : "disconnected",
+    });
+  });
+
+  // 7. Integración con el Frontend (React + Vite / Estáticos)
+  if (env.NODE_ENV === "production") {
+    logger.info("🌐 Modo PRODUCCIÓN: Sirviendo archivos estáticos...");
+    serveStatic(app);
+  } else {
+    logger.info("🌐 Modo DESARROLLO: Montando middleware de Vite...");
+    const { setupVite } = await import("./vite");
+    await setupVite(httpServer, app);
+  }
+
+  // 8. Middleware de manejo de errores centralizado (Debe estar al final de los routes/middlewares)
+  app.use(errorHandler);
+
+  // 9. Iniciar el servidor HTTP
+  httpServer.listen(env.PORT, () => {
+    logger.info(`🚀 Servidor Express levantado con éxito en: ${env.APP_URL}`);
+  });
+}
+
+// Arrancar el backend de forma segura atrapando errores no controlados
+startServer().catch((error) => {
+  console.error("💥 Error fatal al arrancar el servidor Express:", error);
+  process.exit(1);
+});

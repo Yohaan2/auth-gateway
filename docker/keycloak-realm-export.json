@@ -1,0 +1,87 @@
+{
+  "id": "optrax-realm",
+  "realm": "optrax-realm",
+  "enabled": true,
+  "displayName": "Optrax Realm",
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "optrax-app",
+      "name": "Optrax Full Stack Application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "secret": "7ff86a2f-e8b8-4d56-b072-bc106517e4f9",
+      "redirectUris": [
+        "http://localhost/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "http://localhost:3000"
+      ],
+      "adminUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost:3000",
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@optrax.com",
+      "email": "admin@optrax.com",
+      "firstName": "Admin",
+      "lastName": "Optrax",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {}
+    },
+    {
+      "username": "usuario@optrax.com",
+      "email": "usuario@optrax.com",
+      "firstName": "Usuario",
+      "lastName": "Prueba",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {}
+    }
+  ]
+}
