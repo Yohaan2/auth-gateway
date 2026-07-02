@@ -12,10 +12,9 @@ export async function setupVite(httpServer: Server, app: Express) {
   const { createServer: createViteServer } = await import("vite");
   
   const clientPath = path.resolve(__dirname, "../../client");
-
-  console.log("🛠️  Configurando Vite en modo middleware para desarrollo...");
   
   const vite = await createViteServer({
+    configFile: path.resolve(clientPath, "vite.config.ts"),
     root: clientPath,
     server: {
       middlewareMode: true,

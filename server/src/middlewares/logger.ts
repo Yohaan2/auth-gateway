@@ -12,7 +12,8 @@ export const logger = pino({
           options: {
             colorize: true,
             translateTime: "HH:MM:ss Z",
-            ignore: "pid,hostname",
+            ignore: "pid,hostname,req,res,responseTime",
+            messageFormat: "{msg}",
           },
         }
       : undefined,
@@ -21,14 +22,26 @@ export const logger = pino({
 // Middleware de registro de peticiones HTTP para Express
 export const httpLogger = pinoHttp({
   logger,
-  // Deshabilitar logs de peticiones exitosas repetitivas si se desea reducir ruido
-  autoLogging: true,
-  customLogLevel: function (res, err) {
-    if (res.statusCode >= 400 && res.statusCode < 500) {
-      return "warn";
-    } else if (res.statusCode >= 500 || err) {
-      return "error";
-    }
+  autoLogging: {
+    ignore: (req) => {
+      const url = (req as any).originalUrl || (req as any).url || "";
+      return url.startsWith("/@") || url.startsWith("/node_modules/") || url.includes("__vite");
+    },
+  },
+  customLogLevel: function (_req, res, err) {
+    const statusCode = res.statusCode;
+    if (statusCode >= 500 || err) return "error";
+    if (statusCode >= 400) return "warn";
     return "info";
+  },
+  customSuccessMessage: function (req, res) {
+    return `${req.method} ${(req as any).originalUrl || req.url} ${res.statusCode} ${(res as any).responseTime || 0}ms`;
+  },
+  customErrorMessage: function (req, res) {
+    return `${req.method} ${(req as any).originalUrl || req.url} ${res.statusCode} ${(res as any).responseTime || 0}ms`;
+  },
+  serializers: {
+    req() { return undefined; },
+    res() { return undefined; },
   },
 });

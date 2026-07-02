@@ -45,7 +45,7 @@ async function startServer() {
   let sessionStore: session.Store | undefined;
 
   if (env.NODE_ENV === "production") {
-    logger.info("📦 Configurando Session Store persistente con PostgreSQL para producción...");
+    logger.info("Configurando Session Store persistente con PostgreSQL para producción...");
     const PgSession = require("connect-pg-simple")(session);
     sessionStore = new PgSession({
       pool: pool,
@@ -53,7 +53,7 @@ async function startServer() {
       createTableIfMissing: true,
     });
   } else {
-    logger.info("💾 Usando MemoryStore para sesiones (desarrollo).");
+    logger.info("Usando MemoryStore para sesiones (desarrollo).");
   }
 
   app.use(
@@ -72,12 +72,12 @@ async function startServer() {
   );
 
   // 5. Probar la conexión a la base de datos PostgreSQL
-  logger.info("🔌 Probando conexión a la Base de Datos PostgreSQL...");
+  logger.info("Probando conexión a la Base de Datos PostgreSQL...");
   const dbConnected = await checkDbConnection();
   if (dbConnected) {
-    logger.info("✅ Conexión a PostgreSQL establecida con éxito.");
+    logger.info("Conexión a PostgreSQL establecida con éxito.");
   } else {
-    logger.warn("⚠️  No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
+    logger.warn("No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
   }
 
   // 6. Rutas de la API de Autenticación
@@ -94,10 +94,10 @@ async function startServer() {
 
   // 7. Integración con el Frontend (React + Vite / Estáticos)
   if (env.NODE_ENV === "production") {
-    logger.info("🌐 Modo PRODUCCIÓN: Sirviendo archivos estáticos...");
+    logger.info("Modo PRODUCCIÓN: Sirviendo archivos estáticos...");
     serveStatic(app);
   } else {
-    logger.info("🌐 Modo DESARROLLO: Montando middleware de Vite...");
+    logger.info("Modo DESARROLLO: Montando middleware de Vite...");
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
@@ -107,12 +107,12 @@ async function startServer() {
 
   // 9. Iniciar el servidor HTTP
   httpServer.listen(env.PORT, () => {
-    logger.info(`🚀 Servidor Express levantado con éxito en: ${env.APP_URL}`);
+    logger.info(`Servidor Express levantado con éxito en: ${env.APP_URL}`);
   });
 }
 
 // Arrancar el backend de forma segura atrapando errores no controlados
 startServer().catch((error) => {
-  console.error("💥 Error fatal al arrancar el servidor Express:", error);
+  console.error("Error fatal al arrancar el servidor Express:", error);
   process.exit(1);
 });
