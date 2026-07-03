@@ -1,212 +1,159 @@
-import { useState, useEffect } from "react";
-import { AuthProvider, useAuth } from "./features/auth/auth-context";
-import { Shield, Lock, Unlock, Database, Key, CheckCircle, LogOut } from "lucide-react";
-import { apiFetch } from "./lib/api";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "react-oidc-context";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 
-function Dashboard() {
-  const { user, logout } = useAuth();
-  const [dbStatus, setDbStatus] = useState<string>("Verificando...");
-  const [loadingHealth, setLoadingLoadingHealth] = useState(true);
+import { oidcConfig } from "./auth/oidc-config";
+import { setAuthToken } from "./api/admin-api";
+import { useRoles } from "./auth/useRoles";
 
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
+import Roles from "./pages/Roles";
+import Modules from "./pages/Modules";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
+
+// ─── Sincronizar token al API client ─────────────────────────────────────────
+
+function TokenSyncer() {
+  const { user } = useAuth();
   useEffect(() => {
-    // Validar salud de la base de datos desde el endpoint de health
-    apiFetch<{ database: string }>("/api/health")
-      .then((res) => {
-        setDbStatus(res.database === "connected" ? "Conectado" : "Desconectado");
-      })
-      .catch(() => {
-        setDbStatus("Error al consultar");
-      })
-      .finally(() => {
-        setLoadingLoadingHealth(false);
-      });
-  }, []);
+    setAuthToken(user?.access_token ?? null);
+  }, [user?.access_token]);
+  return null;
+}
 
+// ─── Pantalla de sin acceso ───────────────────────────────────────────────────
+
+function NoAccess() {
+  const { signoutRedirect } = useAuth();
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
-      {/* Cabecera del Dashboard */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl border border-emerald-100">
-            <Unlock size={28} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-slate-950">Área Protegida</h1>
-            <p className="text-sm text-slate-500">Sesión activa e integrada con Keycloak y Postgres</p>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm max-w-sm w-full p-8 text-center">
+        <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
         </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Acceso denegado</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Tu cuenta no tiene los roles necesarios para acceder al Auth Manager.
+          Contacta a un administrador para que te asigne el rol{" "}
+          <code className="bg-gray-100 px-1 rounded text-xs">auth-manager-admin</code> o{" "}
+          <code className="bg-gray-100 px-1 rounded text-xs">auth-manager-viewer</code>.
+        </p>
         <button
-          onClick={logout}
-          className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 transition-colors rounded-xl text-sm font-medium"
+          onClick={() => signoutRedirect()}
+          className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
         >
-          <LogOut size={16} />
-          Cerrar Sesión
+          Cerrar sesión
         </button>
       </div>
-
-      {/* Grid de contenido */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Información del Usuario */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:col-span-2">
-          <h2 className="text-base font-semibold text-slate-950 mb-4 flex items-center gap-2">
-            <Shield className="text-indigo-600" size={18} />
-            Perfil Sincronizado en Base de Datos
-          </h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 border-b border-slate-100 pb-3">
-              <span className="text-sm text-slate-500 font-medium">Nombre</span>
-              <span className="text-sm text-slate-900 col-span-2 font-semibold">
-                {user?.name || "Sin nombre"}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 border-b border-slate-100 pb-3">
-              <span className="text-sm text-slate-500 font-medium">Correo Electrónico</span>
-              <span className="text-sm text-slate-900 col-span-2">{user?.email}</span>
-            </div>
-            <div className="grid grid-cols-3 border-b border-slate-100 pb-3">
-              <span className="text-sm text-slate-500 font-medium">Keycloak ID (Sub)</span>
-              <span className="text-sm text-slate-500 col-span-2 font-mono text-xs break-all bg-slate-50 p-1.5 rounded">
-                {user?.keycloakId}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 border-b border-slate-100 pb-3">
-              <span className="text-sm text-slate-500 font-medium">ID Interno (DB)</span>
-              <span className="text-sm text-slate-500 col-span-2 font-mono text-xs break-all bg-slate-50 p-1.5 rounded">
-                {user?.id}
-              </span>
-            </div>
-            <div className="grid grid-cols-3">
-              <span className="text-sm text-slate-500 font-medium">Sincronizado el</span>
-              <span className="text-sm text-slate-900 col-span-2">
-                {user?.createdAt ? new Date(user.createdAt).toLocaleString("es-ES") : ""}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Estado de Integración de Servicios */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-slate-950 mb-4 flex items-center gap-2">
-              <Database className="text-blue-600" size={18} />
-              Infraestructura
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Keycloak OIDC</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  <CheckCircle size={12} />
-                  Activo
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">PostgreSQL App</span>
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    dbStatus === "Conectado"
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                      : "bg-amber-50 text-amber-700 border border-amber-100"
-                  }`}
-                >
-                  <CheckCircle size={12} />
-                  {dbStatus}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400">
-            La sincronización de cuentas ocurre automáticamente al iniciar sesión a través de un flujo OIDC lazy provisioning.
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
 
-function WelcomeScreen() {
-  const { login } = useAuth();
-  
-  // Capturar posibles errores de callback en la URL
-  const [authError, setAuthError] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("auth_error")) {
-      setAuthError("No se pudo completar la autenticación con Keycloak. Por favor, revisa los logs del servidor.");
-    }
-  }, []);
+// ─── Pantalla de carga ────────────────────────────────────────────────────────
 
+function LoadingScreen({ message = "Iniciando sesión..." }: { message?: string }) {
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="bg-indigo-50 text-indigo-600 p-4 rounded-2xl border border-indigo-100 shadow-inner">
-            <Shield size={40} />
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-950 tracking-tight">
-          Auth Optrax Scaffold
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-500 max-w-sm mx-auto">
-          Módulo base de autenticación federada integrado con Keycloak y PostgreSQL.
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm border border-slate-200 rounded-2xl sm:px-10">
-          {authError && (
-            <div className="mb-4 bg-rose-50 text-rose-700 text-xs border border-rose-100 rounded-xl p-3.5 leading-relaxed font-medium">
-              ⚠️ {authError}
-            </div>
-          )}
-
-          <div className="space-y-6">
-            <div className="text-sm text-slate-600 space-y-4">
-              <p>Este scaffold implementa el flujo de arquitectura requerido:</p>
-              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-500">
-                <li><strong>Backend:</strong> Servidor Express sirviendo Vite como middleware.</li>
-                <li><strong>Autenticación:</strong> Flujo seguro Authorization Code con Keycloak.</li>
-                <li><strong>Base de Datos:</strong> Persistencia en PostgreSQL usando Drizzle ORM.</li>
-                <li><strong>Proxy:</strong> Nginx enrutando el tráfico de desarrollo y producción.</li>
-              </ul>
-            </div>
-
-            <button
-              onClick={login}
-              className="w-full flex justify-center items-center gap-2.5 px-4 py-3 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <Key size={18} />
-              Iniciar Sesión con Keycloak
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-gray-500">{message}</p>
       </div>
     </div>
   );
 }
 
-function MainApp() {
-  const { loading, isAuthenticated } = useAuth();
+// ─── App con auth ─────────────────────────────────────────────────────────────
 
-  if (loading) {
+function AppContent() {
+  const auth = useAuth();
+  const { hasAccess } = useRoles();
+
+  // Iniciar login automáticamente si no está autenticado
+  useEffect(() => {
+    if (!auth.isLoading && !auth.isAuthenticated && !auth.activeNavigator && !auth.error) {
+      auth.signinRedirect();
+    }
+  }, [auth.isLoading, auth.isAuthenticated, auth.activeNavigator, auth.error]);
+
+  if (auth.isLoading || auth.activeNavigator) {
+    return <LoadingScreen />;
+  }
+
+  if (auth.error) {
     return (
-      <div className="min-h-screen flex flex-col justify-center items-center bg-slate-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-600"></div>
-        <span className="mt-4 text-sm text-slate-500 font-medium">Comprobando sesión...</span>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-red-200 shadow-sm max-w-sm w-full p-8 text-center">
+          <p className="text-red-600 font-semibold mb-2">Error de autenticación</p>
+          <p className="text-sm text-gray-500 mb-4">{auth.error.message}</p>
+          <button
+            onClick={() => auth.signinRedirect()}
+            className="w-full py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700"
+          >
+            Reintentar login
+          </button>
+        </div>
       </div>
     );
   }
 
-  return isAuthenticated ? <Dashboard /> : <WelcomeScreen />;
+  if (!auth.isAuthenticated) {
+    return <LoadingScreen message="Redirigiendo a Keycloak..." />;
+  }
+
+  if (!hasAccess) {
+    return <NoAccess />;
+  }
+
+  return (
+    <>
+      <TokenSyncer />
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/users/:id" element={<UserDetail />} />
+          <Route path="/roles" element={<Roles />} />
+          <Route path="/modules" element={<Modules />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+    </>
+  );
 }
+
+// ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
   return (
-    <AuthProvider>
-      <div className="min-h-screen bg-slate-50">
-        <MainApp />
-      </div>
+    <AuthProvider {...oidcConfig}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: { borderRadius: "10px", fontSize: "13px" },
+            success: { iconTheme: { primary: "#6366f1", secondary: "#fff" } },
+          }}
+        />
+      </QueryClientProvider>
     </AuthProvider>
   );
 }

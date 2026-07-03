@@ -2,7 +2,6 @@ import express from "express";
 import { createServer } from "http";
 import session from "express-session";
 import cors from "cors";
-import path from "path";
 
 // Configuración y variables de entorno
 import { env } from "./config/env";
@@ -10,12 +9,19 @@ import { env } from "./config/env";
 // Logger y middlewares
 import { logger, httpLogger } from "./middlewares/logger";
 import { errorHandler } from "./middlewares/errorHandler";
+import { defaultLimiter } from "./middleware/rate-limiter";
 
 // Base de datos
 import { checkDbConnection, pool } from "./db/client";
 
-// Rutas de autenticación
+// Rutas de autenticación (legacy session-based)
 import authRouter from "./auth/routes";
+
+// Nuevas rutas del Admin Manager
+import dashboardRouter from "./routes/dashboard";
+import usersRouter from "./routes/users";
+import rolesRouter from "./routes/roles";
+import clientsRouter from "./routes/clients";
 
 // Servidor estático de producción
 import { serveStatic } from "./static";
@@ -24,15 +30,20 @@ async function startServer() {
   const app = express();
   const httpServer = createServer(app);
 
-  // 1. Configuración de CORS básico
+  // 1. Rate limiter global
+  app.use(defaultLimiter);
+
+  // 2. Configuración de CORS
   app.use(
     cors({
-      origin: env.APP_URL,
+      origin: [env.APP_URL, env.FRONTEND_URL].filter(Boolean),
       credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     })
   );
 
-  // 2. Parsers para JSON y URL-encoded
+  // Parsers para JSON y URL-encoded
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -71,19 +82,26 @@ async function startServer() {
     })
   );
 
-  // 5. Probar la conexión a la base de datos PostgreSQL
-  logger.info("Probando conexión a la Base de Datos PostgreSQL...");
+  // Probar la conexión a la base de datos y crear tablas si no existen
+  logger.info("Probando conexión a PostgreSQL y migrando esquema...");
   const dbConnected = await checkDbConnection();
   if (dbConnected) {
     logger.info("Conexión a PostgreSQL establecida con éxito.");
+    await ensureSchema();
   } else {
     logger.warn("No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
   }
 
-  // 6. Rutas de la API de Autenticación
+  // Rutas legacy de autenticación por sesión
   app.use("/api/auth", authRouter);
 
-  // Endpoint básico de Health Check de la API
+  // Rutas del Auth Manager (JWT Bearer)
+  app.use("/api/admin/dashboard", dashboardRouter);
+  app.use("/api/admin/users", usersRouter);
+  app.use("/api/admin/roles", rolesRouter);
+  app.use("/api/admin/clients", clientsRouter);
+
+  // Health Check
   app.get("/api/health", async (_req, res) => {
     res.status(200).json({
       status: "ok",
@@ -109,6 +127,44 @@ async function startServer() {
   httpServer.listen(env.PORT, () => {
     logger.info(`Servidor Express levantado con éxito en: ${env.APP_URL}`);
   });
+}
+
+async function ensureSchema() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        keycloak_id VARCHAR(255) NOT NULL UNIQUE,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(255),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS session (
+        sid VARCHAR NOT NULL PRIMARY KEY,
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        actor_sub VARCHAR(255) NOT NULL,
+        actor_email VARCHAR(255),
+        action VARCHAR(100) NOT NULL,
+        entity VARCHAR(100) NOT NULL,
+        entity_id VARCHAR(255),
+        detail JSON,
+        timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs (timestamp DESC);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs (actor_sub);
+    `);
+    logger.info("Esquema de BD sincronizado.");
+  } catch (err) {
+    logger.error({ msg: "Error al sincronizar esquema de BD", err });
+  }
 }
 
 // Arrancar el backend de forma segura atrapando errores no controlados

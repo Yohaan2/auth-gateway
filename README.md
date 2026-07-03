@@ -1,192 +1,235 @@
-# Auth Optrax - Keycloak Scaffold Full-Stack 🚀
+# Auth Manager — Panel de Administración de Keycloak
 
-Este es un **scaffold full-stack profesional** listo para producción que integra un módulo de autenticación federada con **Keycloak** usando el flujo seguro **Authorization Code Flow**. 
+Panel de administración centralizado (BFF pattern) sobre la Admin REST API de Keycloak 24.0.3.
+Gestiona usuarios, roles y aplicaciones (módulos) registrados en el realm `optrax-realm`.
 
-El proyecto está diseñado bajo un esquema de **monorepo** utilizando npm workspaces, comunicando fluidamente el frontend y el backend en desarrollo local y bajo contenedores Docker.
+## Stack
 
----
-
-## 🛠️ Stack Tecnológico
-
-*   **Backend:** Node.js + Express + TypeScript
-*   **Frontend:** React + Vite + TypeScript
-*   **Estilos:** Tailwind CSS + Lucide Icons
-*   **Base de Datos:** PostgreSQL
-*   **ORM:** Drizzle ORM + Drizzle Kit (migraciones y studio)
-*   **Autenticación:** Keycloak (vía `openid-client` de OpenID Connect)
-*   **Reverse Proxy:** Nginx
-*   **Contenedores:** Docker + Docker Compose (Multi-stage builds)
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | React 18 + Vite + TypeScript + Tailwind CSS |
+| Autenticación frontend | `react-oidc-context` + OIDC PKCE |
+| Backend (BFF) | Node.js + Express + TypeScript |
+| JWT Validation | `jose` + JWKS endpoint de Keycloak |
+| Admin API | `axios` → Keycloak Admin REST API (service account) |
+| Base de datos | PostgreSQL + Drizzle ORM |
+| Identidad | Keycloak 24.0.3 |
 
 ---
 
-## 📐 Arquitectura del Proyecto (Middleware Mode)
+## 1. Configuración manual de Keycloak
 
-Una de las características más potentes de este scaffold es que **el backend de Express sirve el frontend de React usando Vite en modo desarrollo** (middleware mode) con soporte nativo para **HMR (Hot Module Replacement)** en un solo proceso. En producción, Express sirve directamente los archivos estáticos pre-compilados.
+Accede a la consola de administración: `http://localhost:8080/admin` (usuario: `admin`, contraseña: `admin`).
+Selecciona el realm **optrax-realm** (o créalo si no existe).
 
-```
-                  ┌─────────────────────────────────┐
-                  │          Nginx (Proxy)          │
-                  │            Port 80              │
-                  └────────────────┬────────────────┘
-                                   │
-                     ┌─────────────┴─────────────┐
-                     ▼                           ▼
-        ┌─────────────────────────┐ ┌─────────────────────────┐
-        │   Express App (Port 3000)│ │   Keycloak (Port 8080)  │
-        │                         │ │                         │
-        │  * /api/* ──► API       │ │  * Autenticación        │
-        │  * / ─────► React Client│ │  * Registro/Roles       │
-        │    (Vite Middleware Dev │ └─────────────────────────┘
-        │     or Static Prod)     │
-        └────────────┬────────────┘
-                     │
-                     ▼
-        ┌─────────────────────────┐
-        │  PostgreSQL (Port 5432) │
-        │  * Tabla 'users'        │
-        │  * Tabla 'session'      │
-        └─────────────────────────┘
-```
+### 1.1 Client — `auth-manager-frontend` (para el navegador, PKCE)
+
+1. **Clients → Create client**
+   - Client type: `OpenID Connect`
+   - Client ID: `auth-manager-frontend`
+2. **Capability config**
+   - Standard flow: ✅
+   - Direct access grants: ❌
+   - Client authentication: ❌ (cliente público)
+3. **Access settings**
+   - Valid redirect URIs: `http://localhost:3000/*`
+   - Valid post logout redirect URIs: `http://localhost:3000/`
+   - Web origins: `http://localhost:3000`
+4. Guarda. No hay client secret (es público).
+
+### 1.2 Client — `auth-manager` (para el backend, flujo legacy de sesión)
+
+1. **Clients → Create client**
+   - Client ID: `auth-manager`
+2. **Capability config**
+   - Standard flow: ✅
+   - Client authentication: ✅ (confidencial)
+3. **Access settings**
+   - Valid redirect URIs: `http://localhost:3000/api/auth/callback`
+   - Web origins: `http://localhost:3000`
+4. En la pestaña **Credentials**, copia el **Client secret** → `KEYCLOAK_CLIENT_SECRET` en `.env`.
+
+### 1.3 Client — `auth-manager-sa` (service account para Admin API)
+
+1. **Clients → Create client**
+   - Client ID: `auth-manager-sa`
+2. **Capability config**
+   - Client authentication: ✅
+   - Service accounts roles: ✅
+   - Desactiva Standard flow y Direct access grants
+3. En la pestaña **Credentials**, copia el **Client secret** → `KEYCLOAK_SA_CLIENT_SECRET` en `.env`.
+4. En la pestaña **Service account roles**, agrega los roles del cliente **realm-management**:
+   - `manage-users`
+   - `manage-clients`
+   - `manage-realm`
+   - `view-users`
+   - `view-clients`
+   - `view-realm`
+   - `query-groups`
+   - `query-users`
+   - `query-clients`
+   - `query-realms`
+
+### 1.4 Roles del Realm — roles internos del panel
+
+1. **Realm roles → Create role**
+   - Nombre: `auth-manager-admin` — acceso completo al panel (escritura)
+2. **Realm roles → Create role**
+   - Nombre: `auth-manager-viewer` — solo lectura
+
+### 1.5 Asignar roles a los administradores
+
+Para cada usuario que deba acceder al panel:
+1. **Users → {usuario} → Role mapping → Assign role**
+2. Selecciona `auth-manager-admin` o `auth-manager-viewer`.
 
 ---
 
-## 📂 Estructura de Directorios
+## 2. Variables de entorno
 
-El monorepo cuenta con la siguiente arquitectura limpia:
+### Backend (`.env` en la raíz del monorepo)
 
-```
-proyecto/
-├── client/                      # React + Vite + Tailwind (Frontend)
-│   ├── src/
-│   │   ├── main.tsx             # Punto de entrada de React
-│   │   ├── App.tsx              # Dashboard y Landing Page minimalista
-│   │   ├── features/
-│   │   │   └── auth/            # Contexto y hook `useAuth` de React
-│   │   └── lib/
-│   │       └── api.ts           # Cliente HTTP fetch wrapper para /api
-│   ├── index.html
-│   ├── vite.config.ts           # Configuración de Vite
-│   ├── tailwind.config.ts       # Directivas de estilos
-│   └── tsconfig.json
-├── server/                      # Express + TypeScript (Backend)
-│   ├── src/
-│   │   ├── index.ts             # Entrypoint principal de Express
-│   │   ├── vite.ts              # Integración de Vite en modo Middleware (Dev)
-│   │   ├── static.ts            # Cargador de estáticos (Prod)
-│   │   ├── config/
-│   │   │   └── env.ts           # Validación estricta de variables con Zod
-│   │   ├── auth/
-│   │   │   ├── keycloak.ts      # Singleton del cliente openid-client
-│   │   │   ├── middleware.ts    # Middlewares requireAuth y attachUser
-│   │   │   └── routes.ts        # /login, /callback, /logout, /me
-│   │   ├── db/
-│   │   │   ├── client.ts        # Conexión Postgres y DB Healthcheck
-│   │   │   └── schema.ts        # Esquema de la tabla 'users' en Drizzle
-│   │   └── middlewares/
-│   │       ├── errorHandler.ts  # Manejador centralizado de errores
-│   │       └── logger.ts        # Logger estructurado de Pino
-│   ├── tsconfig.json
-│   └── package.json
-├── nginx/
-│   └── default.conf             # Configuración del proxy inverso Nginx
-├── docker/
-│   ├── Dockerfile               # Compilación multi-stage de producción
-│   ├── docker-compose.yml       # Orquestador de servicios del stack
-│   └── keycloak-realm-export.json # Realm auto-importable de Keycloak
-├── .env.example                 # Plantilla de configuración
-├── .env                         # Variables de entorno activas
-├── package.json                 # Workspaces y scripts raíz
-└── README.md
+Copia `.env.example` → `.env` y completa los valores:
+
+```env
+SESSION_SECRET=<genera con: openssl rand -hex 32>
+KEYCLOAK_CLIENT_SECRET=<secret del client auth-manager>
+KEYCLOAK_SA_CLIENT_SECRET=<secret del client auth-manager-sa>
 ```
 
----
+### Frontend (`client/.env.local`)
 
-## 🚀 Cómo arrancar el proyecto
+Copia `client/.env.example` → `client/.env.local`:
 
-### Opción A: Levantar TODO el stack con Docker en 1 solo comando (Recomendado)
-
-Esta opción levantará **Nginx, Keycloak (con el Realm y usuarios pre-configurados), PostgreSQL y la App compilada en producción** de forma automática.
-
-1.  Asegúrate de estar en el directorio raíz del proyecto.
-2.  Inicia Docker Compose:
-    ```bash
-    docker compose -f docker/docker-compose.yml up --build
-    ```
-3.  **¡Listo!** Abre tu navegador e ingresa a:
-    *   **Aplicación principal (a través de Nginx):** `http://localhost`
-    *   **Consola de Administración de Keycloak:** `http://localhost:8080` (Usuario: `admin` / Contraseña: `admin`)
-
-#### 👥 Usuarios de prueba pre-configurados en Keycloak:
-Para facilitar el testeo inmediato, el Realm importado ya cuenta con dos usuarios creados:
-*   **Usuario de Prueba:**
-    *   **Email:** `usuario@optrax.com`
-    *   **Contraseña:** `user123`
-*   **Administrador de Prueba:**
-    *   **Email:** `admin@optrax.com`
-    *   **Contraseña:** `admin123`
+```env
+VITE_KEYCLOAK_URL=http://localhost:8080
+VITE_KEYCLOAK_REALM=optrax-realm
+VITE_KEYCLOAK_CLIENT_ID=auth-manager-frontend
+VITE_ADMIN_ROLE=auth-manager-admin
+VITE_VIEWER_ROLE=auth-manager-viewer
+```
 
 ---
 
-### Opción B: Ejecutar en Desarrollo Local (Vite Middleware)
+## 3. Instalación y desarrollo
 
-Si prefieres ejecutar el código directamente en tu máquina local para programar con recarga rápida (HMR).
+### Con Docker (recomendado)
 
-#### Paso 1: Levantar servicios de Infraestructura (Base de datos y Keycloak)
-Para que la app funcione localmente, necesitamos la base de datos de PostgreSQL y Keycloak encendidos.
 ```bash
-# Encender solo PostgreSQL y Keycloak
+# Levanta Postgres + Keycloak
 docker compose -f docker/docker-compose.yml up postgres keycloak -d
+
+# Espera ~30s a que Keycloak inicie, luego levanta la app
+docker compose -f docker/docker-compose.yml up app -d
 ```
 
-#### Paso 2: Configurar variables de entorno
-Copia la plantilla `.env.example` en un archivo llamado `.env` en la raíz del monorepo (este archivo ya está auto-configurado con los valores por defecto):
-```bash
-cp .env.example .env
-```
+La app estará en `http://localhost:3000`.
 
-#### Paso 3: Instalar dependencias del monorepo
-Instala todos los paquetes del cliente y servidor de una sola vez desde la raíz:
+### Local (sin Docker)
+
+Requiere PostgreSQL y Keycloak corriendo localmente.
+
 ```bash
+# Instalar dependencias
 npm install
-```
 
-#### Paso 4: Sincronizar el esquema de PostgreSQL usando Drizzle ORM
-Aplica la estructura de datos (tabla de usuarios) a la base de datos de desarrollo usando Drizzle Kit:
-```bash
-# Ejecutar desde la raíz para empujar los esquemas a Postgres
-npm run db:push --workspace=server
-```
+# Configurar variables de entorno
+cp .env.example .env
+cp client/.env.example client/.env.local
+# Edita ambos archivos con tus valores
 
-#### Paso 5: Iniciar el entorno de desarrollo
-Inicia el servidor backend de Express, el cual levantará dinámicamente a Vite en modo middleware:
-```bash
+# Iniciar en modo desarrollo (backend + frontend con HMR)
 npm run dev
 ```
 
-Abre tu navegador e ingresa a `http://localhost:3000`. Cualquier cambio en el frontend o backend se reflejará instantáneamente en caliente.
+---
+
+## 4. Estructura del proyecto
+
+```
+auth-gateway/
+├── server/src/
+│   ├── config/env.ts                    # Validación Zod de variables de entorno
+│   ├── services/keycloak-admin.service.ts  # Wrapper de la Admin REST API
+│   ├── middleware/
+│   │   ├── jwt-auth.ts                  # Validación JWT via JWKS + guards de roles
+│   │   └── rate-limiter.ts              # Rate limiting por endpoint
+│   ├── routes/
+│   │   ├── dashboard.ts                 # GET /api/admin/dashboard
+│   │   ├── users.ts                     # CRUD /api/admin/users
+│   │   ├── roles.ts                     # CRUD /api/admin/roles
+│   │   └── clients.ts                   # CRUD /api/admin/clients
+│   ├── audit/audit.service.ts           # Registro de auditoría en PostgreSQL
+│   ├── db/schema.ts                     # Tablas: users, audit_logs
+│   └── auth/                            # Flujo legacy de sesión (se mantiene)
+│
+├── client/src/
+│   ├── auth/
+│   │   ├── oidc-config.ts              # Configuración react-oidc-context (PKCE)
+│   │   └── useRoles.ts                 # Hook para roles del JWT
+│   ├── api/admin-api.ts                # Cliente Axios con Bearer token
+│   ├── pages/
+│   │   ├── Dashboard.tsx               # Estadísticas y gráfica
+│   │   ├── Users.tsx                   # Lista paginada con búsqueda
+│   │   ├── UserDetail.tsx              # Edición, sesiones, asignación de roles
+│   │   ├── Roles.tsx                   # CRUD de roles del realm
+│   │   └── Modules.tsx                 # CRUD de clients + sus roles
+│   └── components/
+│       ├── Layout.tsx                  # Sidebar + topbar responsivo
+│       ├── Table.tsx                   # Tabla paginada reutilizable
+│       ├── ConfirmDialog.tsx           # Modal de confirmación
+│       └── RoleDualList.tsx            # Dual-list para asignación de roles
+│
+└── docker/
+    ├── docker-compose.yml
+    └── Dockerfile
+```
 
 ---
 
-## 🔒 Lógica Detrás de la Autenticación con Keycloak
+## 5. API del backend
 
-1.  **Redirección (`/api/auth/login`):** La app genera un `state` y `nonce` temporal que guarda en la sesión segura de Express, y redirige al navegador del cliente al portal oficial de Keycloak.
-2.  **Consentimiento e Intercambio (`/api/auth/callback`):** Al iniciar sesión con éxito, Keycloak devuelve un `code` temporal al callback. El backend de Express intercepta este código y, haciendo uso de `openid-client`, lo intercambia por tokens de acceso (`access_token`, `id_token` y `refresh_token`) internamente.
-3.  **Lazy Provisioning (Sincronización de Base de Datos):** Una vez validados los tokens, el backend consulta el perfil del usuario en Keycloak (claim `sub`). Si es la primera vez que inicia sesión, crea de forma automática un usuario asociado en la tabla de PostgreSQL (`users`). Si ya existía, actualiza su nombre u otros datos si hubieran cambiado.
-4.  **Manejo de Sesión:** Los tokens se almacenan de manera segura en el backend (`express-session`). Para desarrollo se utiliza un almacén en memoria (`MemoryStore`), mientras que para producción ya está lista y configurada la persistencia segura usando la base de datos de PostgreSQL a través de `connect-pg-simple` (se auto-crea la tabla `session`).
-5.  **Cierre de Sesión (`/api/auth/logout`):** Destruye de forma segura la sesión en Express y redirige a Keycloak para invalidar su sesión de Single Sign-On (SSO).
+Todas las rutas requieren `Authorization: Bearer <access_token>` del portal.
+
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/api/admin/dashboard` | admin, viewer | Estadísticas del realm |
+| GET | `/api/admin/users` | admin, viewer | Lista paginada de usuarios |
+| POST | `/api/admin/users` | admin | Crear usuario |
+| GET | `/api/admin/users/:id` | admin, viewer | Detalle de usuario |
+| PUT | `/api/admin/users/:id` | admin | Actualizar usuario |
+| DELETE | `/api/admin/users/:id` | admin | Eliminar usuario |
+| PUT | `/api/admin/users/:id/reset-password` | admin | Resetear contraseña |
+| POST | `/api/admin/users/:id/verify-email` | admin | Verificar email |
+| GET | `/api/admin/users/:id/sessions` | admin, viewer | Sesiones activas |
+| DELETE | `/api/admin/users/:id/sessions` | admin | Revocar sesiones |
+| GET | `/api/admin/users/:id/roles` | admin, viewer | Role mappings del usuario |
+| POST | `/api/admin/users/:id/roles/realm` | admin | Asignar roles del realm |
+| DELETE | `/api/admin/users/:id/roles/realm` | admin | Quitar roles del realm |
+| POST | `/api/admin/users/:id/roles/clients/:clientUuid` | admin | Asignar roles de cliente |
+| DELETE | `/api/admin/users/:id/roles/clients/:clientUuid` | admin | Quitar roles de cliente |
+| GET | `/api/admin/roles` | admin, viewer | Lista roles del realm |
+| POST | `/api/admin/roles` | admin | Crear rol del realm |
+| PUT | `/api/admin/roles/:roleName` | admin | Actualizar rol |
+| DELETE | `/api/admin/roles/:roleName` | admin | Eliminar rol |
+| GET | `/api/admin/clients` | admin, viewer | Lista de clientes (módulos) |
+| POST | `/api/admin/clients` | admin | Crear cliente |
+| GET | `/api/admin/clients/:id` | admin, viewer | Detalle de cliente |
+| PUT | `/api/admin/clients/:id` | admin | Actualizar cliente |
+| GET | `/api/admin/clients/:id/roles` | admin, viewer | Roles del cliente |
+| POST | `/api/admin/clients/:id/roles` | admin | Crear rol de cliente |
+| PUT | `/api/admin/clients/:id/roles/:roleName` | admin | Actualizar rol de cliente |
+| DELETE | `/api/admin/clients/:id/roles/:roleName` | admin | Eliminar rol de cliente |
 
 ---
 
-## 💾 Comandos Útiles de Drizzle
+## 6. Auditoría
 
-Si deseas explorar y gestionar la base de datos PostgreSQL de manera gráfica durante el desarrollo:
+Todas las operaciones de escritura quedan registradas en la tabla `audit_logs`:
 
-*   **Ver la Base de Datos Gráficamente (Drizzle Studio):**
-    ```bash
-    npm run db:studio --workspace=server
-    ```
-    Esto abrirá un panel de control en tu navegador en `https://local.drizzle.studio` para visualizar y editar tablas manualmente.
-*   **Generar Archivos de Migraciones SQL:**
-    ```bash
-    npm run db:generate --workspace=server
-    ```
+```sql
+SELECT actor_email, action, entity, entity_id, detail, timestamp
+FROM audit_logs
+ORDER BY timestamp DESC
+LIMIT 50;
+```
