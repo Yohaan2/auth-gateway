@@ -91,7 +91,6 @@ async function startServer() {
   const dbConnected = await checkDbConnection();
   if (dbConnected) {
     logger.info("Conexión a PostgreSQL establecida con éxito.");
-    await ensureSchema();
   } else {
     logger.warn("No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
   }
@@ -135,53 +134,6 @@ async function startServer() {
   httpServer.listen(env.PORT, () => {
     logger.info(`Servidor Express levantado con éxito en: ${env.APP_URL}`);
   });
-}
-
-async function ensureSchema() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        keycloak_id VARCHAR(255) NOT NULL UNIQUE,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        name VARCHAR(255),
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS session (
-        sid VARCHAR NOT NULL PRIMARY KEY,
-        sess JSON NOT NULL,
-        expire TIMESTAMP(6) NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        actor_sub VARCHAR(255) NOT NULL,
-        actor_email VARCHAR(255),
-        action VARCHAR(100) NOT NULL,
-        entity VARCHAR(100) NOT NULL,
-        entity_id VARCHAR(255),
-        detail JSON,
-        timestamp TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs (timestamp DESC);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs (actor_sub);
-
-      CREATE TABLE IF NOT EXISTS gateway_clients (
-        client_id VARCHAR(255) PRIMARY KEY,
-        client_secret VARCHAR(500) NOT NULL,
-        name VARCHAR(255),
-        active BOOLEAN NOT NULL DEFAULT TRUE,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-    logger.info("Esquema de BD sincronizado.");
-  } catch (err) {
-    logger.error({ msg: "Error al sincronizar esquema de BD", err });
-  }
 }
 
 // Arrancar el backend de forma segura atrapando errores no controlados
