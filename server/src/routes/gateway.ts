@@ -115,8 +115,18 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
 
     // Extraer info del token
     const payload = decodePayload(kcResponse.access_token);
-    const clientRoles: string[] = (payload.resource_access as any)?.[clientId]?.roles ?? [];
+    const resourceAccess = (payload.resource_access as Record<string, { roles: string[] }>) ?? {};
+    const clientRoles: string[] = resourceAccess[clientId]?.roles ?? [];
     const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
+
+    // Todos los módulos (clients) a los que el usuario tiene acceso con sus roles
+    const internalClients = new Set(["account", "account-console", "broker", "realm-management", "security-admin-console"]);
+    const modules: Record<string, string[]> = {};
+    for (const [cid, val] of Object.entries(resourceAccess)) {
+      if (!internalClients.has(cid) && val.roles?.length) {
+        modules[cid] = val.roles;
+      }
+    }
 
     res.json({
       access_token: kcResponse.access_token,
@@ -128,8 +138,9 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
         username: payload.preferred_username,
         email: payload.email,
         name: payload.name,
-        roles: clientRoles,       // roles específicos de este módulo
-        realmRoles,               // roles globales del realm
+        roles: clientRoles,  // roles del módulo que hizo login
+        realmRoles,          // roles globales del realm
+        modules,             // todos los módulos con sus roles
       },
     });
   } catch (err) {
@@ -170,7 +181,17 @@ router.post("/refresh", async (req, res, next) => {
       );
 
       const payload = decodePayload(data.access_token);
-      const clientRoles: string[] = (payload.resource_access as any)?.[clientId]?.roles ?? [];
+      const resourceAccess = (payload.resource_access as Record<string, { roles: string[] }>) ?? {};
+      const clientRoles: string[] = resourceAccess[clientId]?.roles ?? [];
+      const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
+
+      const internalClients = new Set(["account", "account-console", "broker", "realm-management", "security-admin-console"]);
+      const modules: Record<string, string[]> = {};
+      for (const [cid, val] of Object.entries(resourceAccess)) {
+        if (!internalClients.has(cid) && val.roles?.length) {
+          modules[cid] = val.roles;
+        }
+      }
 
       res.json({
         access_token: data.access_token,
@@ -182,6 +203,8 @@ router.post("/refresh", async (req, res, next) => {
           username: payload.preferred_username,
           email: payload.email,
           roles: clientRoles,
+          realmRoles,
+          modules,
         },
       });
     } catch (err: any) {
@@ -249,10 +272,17 @@ router.get("/verify", async (req, res, next) => {
       const issuer = `${env.KEYCLOAK_URL}/realms/${env.KEYCLOAK_REALM}`;
       const { payload } = await jwtVerify(token, getJWKS(), { issuer });
 
-      const clientRoles: string[] = clientId
-        ? (payload.resource_access as any)?.[clientId]?.roles ?? []
-        : [];
+      const resourceAccess = ((payload as any).resource_access as Record<string, { roles: string[] }>) ?? {};
+      const clientRoles: string[] = clientId ? resourceAccess[clientId]?.roles ?? [] : [];
       const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
+
+      const internalClients = new Set(["account", "account-console", "broker", "realm-management", "security-admin-console"]);
+      const modules: Record<string, string[]> = {};
+      for (const [cid, val] of Object.entries(resourceAccess)) {
+        if (!internalClients.has(cid) && val.roles?.length) {
+          modules[cid] = val.roles;
+        }
+      }
 
       res.json({
         valid: true,
@@ -263,6 +293,7 @@ router.get("/verify", async (req, res, next) => {
           name: (payload as any).name,
           roles: clientRoles,
           realmRoles,
+          modules,
         },
         expiresAt: payload.exp ? new Date(payload.exp * 1000).toISOString() : null,
       });
