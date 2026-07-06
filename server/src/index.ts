@@ -23,6 +23,10 @@ import usersRouter from "./routes/users";
 import rolesRouter from "./routes/roles";
 import clientsRouter from "./routes/clients";
 
+// Gateway público (login de módulos externos)
+import gatewayRouter from "./routes/gateway";
+import gatewayAdminRouter from "./routes/gateway-admin";
+
 // Servidor estático de producción
 import { serveStatic } from "./static";
 
@@ -95,11 +99,15 @@ async function startServer() {
   // Rutas legacy de autenticación por sesión
   app.use("/api/auth", authRouter);
 
-  // Rutas del Auth Manager (JWT Bearer)
+  // Rutas del Auth Manager (JWT Bearer requerido)
   app.use("/api/admin/dashboard", dashboardRouter);
   app.use("/api/admin/users", usersRouter);
   app.use("/api/admin/roles", rolesRouter);
   app.use("/api/admin/clients", clientsRouter);
+  app.use("/api/admin/gateway/clients", gatewayAdminRouter);
+
+  // Gateway público — para login de módulos externos (sin JWT del panel)
+  app.use("/api/gateway", gatewayRouter);
 
   // Health Check
   app.get("/api/health", async (_req, res) => {
@@ -160,6 +168,15 @@ async function ensureSchema() {
 
       CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs (timestamp DESC);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs (actor_sub);
+
+      CREATE TABLE IF NOT EXISTS gateway_clients (
+        client_id VARCHAR(255) PRIMARY KEY,
+        client_secret VARCHAR(500) NOT NULL,
+        name VARCHAR(255),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
     `);
     logger.info("Esquema de BD sincronizado.");
   } catch (err) {

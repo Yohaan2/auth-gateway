@@ -8,7 +8,7 @@ export type AuditAction =
   | "assign_realm_role" | "remove_realm_role"
   | "assign_client_role" | "remove_client_role"
   | "create_realm_role" | "update_realm_role" | "delete_realm_role"
-  | "create_client" | "update_client" | "enable_client" | "disable_client"
+  | "create_client" | "update_client" | "delete_client" | "enable_client" | "disable_client"
   | "create_client_role" | "update_client_role" | "delete_client_role";
 
 export type AuditEntity = "user" | "role" | "client" | "client_role" | "session";

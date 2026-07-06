@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, json, boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -19,6 +19,18 @@ export const auditLogs = pgTable("audit_logs", {
   detail: json("detail"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
+
+// Clientes registrados para usar el gateway de login
+export const gatewayClients = pgTable("gateway_clients", {
+  clientId: varchar("client_id", { length: 255 }).primaryKey(),
+  clientSecret: varchar("client_secret", { length: 500 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type GatewayClient = typeof gatewayClients.$inferSelect;
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
