@@ -48,8 +48,87 @@
         "offline_access",
         "microprofile-jwt"
       ]
+    },
+    {
+      "clientId": "optrax-frontend",
+      "name": "Optrax Frontend Application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "http://localhost:3000"
+      ],
+      "adminUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost:3000",
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "auth-manager-sa",
+      "name": "Auth Manager Admin Service Account",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "secret": "A5ptC0SjWERS30L6FlqJ84aqogqD5c4i",
+      "redirectUris": [],
+      "webOrigins": [],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
     }
   ],
+  "roles": {
+    "realm": [
+      {
+        "name": "auth-manager-admin",
+        "description": "Administrador del Auth Manager"
+      },
+      {
+        "name": "auth-manager-viewer",
+        "description": "Lector del Auth Manager"
+      }
+    ]
+  },
   "users": [
     {
       "username": "admin@optrax.com",
@@ -65,7 +144,10 @@
           "temporary": false
         }
       ],
-      "clientRoles": {}
+      "clientRoles": {},
+      "realmRoles": [
+        "auth-manager-admin"
+      ]
     },
     {
       "username": "usuario@optrax.com",
@@ -81,7 +163,26 @@
           "temporary": false
         }
       ],
-      "clientRoles": {}
+      "clientRoles": {},
+      "realmRoles": [
+        "auth-manager-viewer"
+      ]
+    },
+    {
+      "username": "service-account-auth-manager-sa",
+      "enabled": true,
+      "emailVerified": false,
+      "serviceAccountClientId": "auth-manager-sa",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "query-groups",
+          "view-clients",
+          "manage-clients"
+        ]
+      }
     }
   ]
 }
