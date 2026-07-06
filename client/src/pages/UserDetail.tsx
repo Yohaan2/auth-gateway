@@ -365,13 +365,19 @@ export default function UserDetail() {
       </Section>
 
       {/* Roles por módulo (Client Roles) */}
-      {(clientsQ.data?.length ?? 0) > 0 && (
-        <Section title="Roles por Módulo">
-          <div className="space-y-4">
+      <Section title="Roles por Módulo">
+        {clientsQ.isLoading ? (
+          <p className="text-sm text-gray-400">Cargando módulos...</p>
+        ) : (clientsQ.data?.length ?? 0) === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">
+            No hay módulos registrados. Crea uno en la sección{" "}
+            <Link to="/modules" className="text-indigo-600 underline">Módulos</Link>.
+          </p>
+        ) : (
+          <div className="space-y-5">
             {clientsQ.data?.map((client) => {
               const clientMappings = roleMappingsQ.data?.clientMappings?.[client.clientId];
               const assignedClientRoles = clientMappings?.mappings ?? [];
-
               return (
                 <ClientRoleSection
                   key={client.id}
@@ -385,8 +391,8 @@ export default function UserDetail() {
               );
             })}
           </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
       {/* Diálogos de confirmación */}
       <ConfirmDialog
@@ -427,12 +433,10 @@ function ClientRoleSection({
   isAdmin: boolean;
   onUpdate: () => void;
 }) {
-  const { data: allRoles } = useQuery({
+  const { data: allRoles, isLoading } = useQuery({
     queryKey: ["client-roles", clientId],
     queryFn: () => clientsApi.getRoles(clientId),
   });
-
-  if (!allRoles?.length) return null;
 
   const handleChange = async (newRoles: KcRole[]) => {
     const current = new Set(assignedRoles.map((r) => r.id));
@@ -450,16 +454,36 @@ function ClientRoleSection({
   };
 
   return (
-    <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-        {clientName}
-      </p>
-      <RoleDualList
-        allRoles={allRoles}
-        assignedRoles={assignedRoles}
-        onChange={handleChange}
-        disabled={!isAdmin}
-      />
+    <div className="rounded-lg border border-gray-100 p-4 bg-gray-50/50">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+          {clientName}
+        </p>
+        {(allRoles?.length ?? 0) === 0 && !isLoading && (
+          <Link
+            to="/modules"
+            className="text-xs text-indigo-500 hover:text-indigo-700"
+          >
+            + Crear roles en Módulos →
+          </Link>
+        )}
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-gray-400">Cargando roles...</p>
+      ) : (allRoles?.length ?? 0) === 0 ? (
+        <p className="text-xs text-gray-400 py-2">
+          Este módulo no tiene roles definidos. Ve a{" "}
+          <Link to="/modules" className="text-indigo-500 underline">Módulos</Link>{" "}
+          y crea los roles primero.
+        </p>
+      ) : (
+        <RoleDualList
+          allRoles={allRoles ?? []}
+          assignedRoles={assignedRoles}
+          onChange={handleChange}
+          disabled={!isAdmin}
+        />
+      )}
     </div>
   );
 }
