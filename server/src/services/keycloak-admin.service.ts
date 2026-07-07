@@ -281,6 +281,10 @@ class KeycloakAdminService {
     return this.req({ method: "PUT", url: `/clients/${id}`, data: payload });
   }
 
+  getClientSecret(id: string): Promise<{ type: string; value: string }> {
+    return this.req({ method: "GET", url: `/clients/${id}/client-secret` });
+  }
+
   getClientRoles(clientId: string): Promise<KcRole[]> {
     return this.req({ method: "GET", url: `/clients/${clientId}/roles` });
   }

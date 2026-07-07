@@ -2,6 +2,8 @@ import { Router } from "express";
 import { kcAdmin } from "../services/keycloak-admin.service";
 import { requireJwt, requireAdminOrViewer, requireAdmin } from "../middleware/jwt-auth";
 import { logAudit } from "../audit/audit.service";
+import { Permissions } from "../common/decorators/roles.decorator";
+import { IAM_PERMISSIONS } from "../config/iam-roles";
 import { sensitiveLimiter } from "../middleware/rate-limiter";
 
 const router = Router();
@@ -163,7 +165,7 @@ router.delete("/:id/sessions", requireAdmin, async (req, res, next) => {
 
 // ─── Asignación de roles ──────────────────────────────────────────────────────
 
-router.get("/:id/roles", requireAdminOrViewer, async (req, res, next) => {
+router.get("/:id/roles", Permissions(IAM_PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
   try {
     const mappings = await kcAdmin.getUserRoleMappings(req.params.id);
     res.json(mappings);
@@ -172,7 +174,7 @@ router.get("/:id/roles", requireAdminOrViewer, async (req, res, next) => {
   }
 });
 
-router.post("/:id/roles/realm", requireAdmin, async (req, res, next) => {
+router.post("/:id/roles/realm", Permissions(IAM_PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
   try {
     const { roles } = req.body;
     if (!Array.isArray(roles)) return res.status(400).json({ error: "'roles' debe ser un array." });
@@ -184,7 +186,7 @@ router.post("/:id/roles/realm", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.delete("/:id/roles/realm", requireAdmin, async (req, res, next) => {
+router.delete("/:id/roles/realm", Permissions(IAM_PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
   try {
     const { roles } = req.body;
     if (!Array.isArray(roles)) return res.status(400).json({ error: "'roles' debe ser un array." });

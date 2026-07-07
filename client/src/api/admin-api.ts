@@ -7,6 +7,13 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Cliente dedicado al módulo IAM (roles administrativos, RBAC, /me)
+export const iamApiClient = axios.create({
+  baseURL: "/api/iam",
+  headers: { "Content-Type": "application/json" },
+  withCredentials: true,
+});
+
 // El token se inyecta desde fuera (setAuthToken) para evitar dependencias circulares
 let currentToken: string | null = null;
 
@@ -14,12 +21,15 @@ export function setAuthToken(token: string | null) {
   currentToken = token;
 }
 
-api.interceptors.request.use((config) => {
+function attachAuthHeader(config: any) {
   if (currentToken) {
     config.headers.Authorization = `Bearer ${currentToken}`;
   }
   return config;
-});
+}
+
+api.interceptors.request.use(attachAuthHeader);
+iamApiClient.interceptors.request.use(attachAuthHeader);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -200,6 +210,116 @@ export const clientsApi = {
 
   getRoleUsers: (id: string, roleName: string) =>
     api.get<KcUser[]>(`/clients/${id}/roles/${encodeURIComponent(roleName)}/users`).then((r) => r.data),
+};
+
+// ─── Plantillas de Acceso (Access Templates) — Fase 3 ────────────────────────
+
+export interface TemplateRoleInput {
+  roleName: string;
+  roleId?: string;
+  isClientRole?: boolean;
+  clientId?: string;
+}
+
+export interface TemplateGroupInput {
+  groupId: string;
+  groupPath: string;
+}
+
+export interface TemplateClaimInput {
+  claimKey: string;
+  claimValue: string;
+}
+
+export interface TemplatePermissionInput {
+  resource: string;
+  action: string;
+  effect?: "allow" | "deny";
+  description?: string;
+}
+
+export interface AccessTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccessTemplateDetail extends AccessTemplate {
+  roles: (TemplateRoleInput & { id: string })[];
+  groups: (TemplateGroupInput & { id: string })[];
+  claims: (TemplateClaimInput & { id: string })[];
+  permissions: (TemplatePermissionInput & { id: string })[];
+}
+
+export interface TemplatePayload {
+  name: string;
+  description?: string;
+  active?: boolean;
+  roles?: TemplateRoleInput[];
+  groups?: TemplateGroupInput[];
+  claims?: TemplateClaimInput[];
+  permissions?: TemplatePermissionInput[];
+}
+
+export const templatesApi = {
+  list: () => api.get<AccessTemplate[]>("/templates").then((r) => r.data),
+
+  get: (id: string) => api.get<AccessTemplateDetail>(`/templates/${id}`).then((r) => r.data),
+
+  create: (payload: TemplatePayload) =>
+    api.post<AccessTemplateDetail>("/templates", payload).then((r) => r.data),
+
+  update: (id: string, payload: Partial<TemplatePayload>) =>
+    api.put<AccessTemplateDetail>(`/templates/${id}`, payload).then((r) => r.data),
+
+  delete: (id: string) => api.delete(`/templates/${id}`).then((r) => r.data),
+
+  listKeycloakRoles: () => api.get<KcRole[]>("/templates/keycloak/roles").then((r) => r.data),
+
+  listKeycloakGroups: () =>
+    api
+      .get<{ id: string; name: string; path?: string }[]>("/templates/keycloak/groups")
+      .then((r) => r.data),
+};
+
+// ─── IAM — Fase 1 (roles administrativos + RBAC) ────────────────────────────
+
+export type IamRole = "SUPER_ADMIN" | "IAM_ADMIN" | "TENANT_ADMIN" | "AUDITOR";
+
+export type IamPermission =
+  | "iam:manage_users"
+  | "iam:manage_roles"
+  | "iam:manage_tenants"
+  | "iam:manage_templates"
+  | "iam:view_audit"
+  | "iam:manage_settings";
+
+export const IAM_PERMISSIONS = {
+  MANAGE_USERS: "iam:manage_users" as const,
+  MANAGE_ROLES: "iam:manage_roles" as const,
+  MANAGE_TENANTS: "iam:manage_tenants" as const,
+  MANAGE_TEMPLATES: "iam:manage_templates" as const,
+  VIEW_AUDIT: "iam:view_audit" as const,
+  MANAGE_IAM_SETTINGS: "iam:manage_settings" as const,
+};
+
+export interface IamMeResponse {
+  user: {
+    id: string;
+    username?: string;
+    email?: string;
+    name?: string;
+  };
+  roles: IamRole[];
+  permissions: IamPermission[];
+  isSuperAdmin: boolean;
+}
+
+export const iamApi = {
+  me: () => iamApiClient.get<IamMeResponse>("/me").then((r) => r.data),
 };
 
 export default api;

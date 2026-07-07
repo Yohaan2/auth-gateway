@@ -5,10 +5,11 @@ import {
   ArrowLeft, CheckCircle, XCircle, Trash2, KeyRound, LogOut,
   Monitor, RefreshCw, Mail, Save
 } from "lucide-react";
-import { usersApi, rolesApi, clientsApi, type KcRole } from "../api/admin-api";
+import { usersApi, rolesApi, clientsApi, type KcRole, IAM_PERMISSIONS } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RoleDualList from "../components/RoleDualList";
 import { useRoles } from "../auth/useRoles";
+import { useIamAccess } from "../auth/useIamAccess";
 import toast from "react-hot-toast";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default function UserDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isAdmin } = useRoles();
+  const { hasPermission } = useIamAccess();
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
@@ -351,18 +353,20 @@ export default function UserDetail() {
       </Section>
 
       {/* Roles del Realm */}
-      <Section title="Roles del Realm">
-        {roleMappingsQ.isLoading || allRealmRolesQ.isLoading ? (
-          <p className="text-sm text-gray-400">Cargando roles...</p>
-        ) : (
-          <RoleDualList
-            allRoles={allRealmRolesQ.data ?? []}
-            assignedRoles={assignedRealmRoles}
-            onChange={handleRealmRoleChange}
-            disabled={!isAdmin}
-          />
-        )}
-      </Section>
+      {hasPermission(IAM_PERMISSIONS.MANAGE_USERS) && (
+        <Section title="Roles del Realm">
+          {roleMappingsQ.isLoading || allRealmRolesQ.isLoading ? (
+            <p className="text-sm text-gray-400">Cargando roles...</p>
+          ) : (
+            <RoleDualList
+              allRoles={allRealmRolesQ.data ?? []}
+              assignedRoles={assignedRealmRoles}
+              onChange={handleRealmRoleChange}
+              disabled={false}
+            />
+          )}
+        </Section>
+      )}
 
       {/* Roles por módulo (Client Roles) */}
       <Section title="Roles por Módulo">

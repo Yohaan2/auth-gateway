@@ -7,7 +7,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: auth-optrax-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -28,7 +28,7 @@ services:
   # SERVIDOR DE IDENTIDAD (KEYCLOAK)
   # ==========================================
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0.3
+    image: quay.io/keycloak/keycloak:26.6.4
     container_name: auth-optrax-keycloak
     command: start-dev --import-realm
     environment:
@@ -49,42 +49,42 @@ services:
   # ==========================================
   # APLICACIÓN NODE/EXPRESS + REACT (APP)
   # ==========================================
-  app:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    container_name: auth-optrax-app
-    restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      PORT: 3000
-      NODE_ENV: production
-      APP_URL: http://localhost:3000
-      FRONTEND_URL: http://localhost:3000
-      SESSION_SECRET: ${SESSION_SECRET}
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auth_optrax}
-      # URL pública de Keycloak (accesible desde el navegador — para issuer del JWT)
-      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
-      # URL interna (backend → Keycloak dentro de la red Docker)
-      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-optrax-realm}
-      # Client confidencial del Auth Manager (flujo legacy de sesión)
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-auth-manager}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-      KEYCLOAK_REDIRECT_URI: http://localhost:3000/api/auth/callback
-      KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
-      # Service Account para Admin REST API
-      KEYCLOAK_SA_CLIENT_ID: ${KEYCLOAK_SA_CLIENT_ID:-auth-manager-sa}
-      KEYCLOAK_SA_CLIENT_SECRET: ${KEYCLOAK_SA_CLIENT_SECRET}
-      # Roles internos del panel
-      KEYCLOAK_ADMIN_ROLE: ${KEYCLOAK_ADMIN_ROLE:-auth-manager-admin}
-      KEYCLOAK_VIEWER_ROLE: ${KEYCLOAK_VIEWER_ROLE:-auth-manager-viewer}
-    ports:
-      - "3000:3000"
-    networks:
-      - optrax-network
+  # app:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile
+  #   container_name: auth-optrax-app
+  #   restart: unless-stopped
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   environment:
+  #     PORT: 3000
+  #     NODE_ENV: production
+  #     APP_URL: http://localhost:3000
+  #     FRONTEND_URL: http://localhost:3000
+  #     SESSION_SECRET: ${SESSION_SECRET}
+  #     DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auth_optrax}
+  #     # URL pública de Keycloak (accesible desde el navegador — para issuer del JWT)
+  #     KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
+  #     # URL interna (backend → Keycloak dentro de la red Docker)
+  #     KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+  #     KEYCLOAK_REALM: ${KEYCLOAK_REALM:-optrax-realm}
+  #     # Client confidencial del Auth Manager (flujo legacy de sesión)
+  #     KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-auth-manager}
+  #     KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+  #     KEYCLOAK_REDIRECT_URI: http://localhost:3000/api/auth/callback
+  #     KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
+  #     # Service Account para Admin REST API
+  #     KEYCLOAK_SA_CLIENT_ID: ${KEYCLOAK_SA_CLIENT_ID:-auth-manager-sa}
+  #     KEYCLOAK_SA_CLIENT_SECRET: ${KEYCLOAK_SA_CLIENT_SECRET}
+  #     # Roles internos del panel
+  #     KEYCLOAK_ADMIN_ROLE: ${KEYCLOAK_ADMIN_ROLE:-auth-manager-admin}
+  #     KEYCLOAK_VIEWER_ROLE: ${KEYCLOAK_VIEWER_ROLE:-auth-manager-viewer}
+  #   ports:
+  #     - "3000:3000"
+  #   networks:
+  #     - optrax-network
 
   # ==========================================
   # PROXY REVERSO (NGINX)
@@ -92,7 +92,7 @@ services:
   # nginx:
   #   image: nginx:alpine
   #   container_name: auth-optrax-nginx
-  #   restart: always
+  #   restart: unless-stopped
   #   depends_on:
   #     - app
   #   ports:

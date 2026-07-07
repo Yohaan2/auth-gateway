@@ -126,6 +126,22 @@
       {
         "name": "auth-manager-viewer",
         "description": "Lector del Auth Manager"
+      },
+      {
+        "name": "SUPER_ADMIN",
+        "description": "Acceso administrativo total al módulo IAM de Optrax"
+      },
+      {
+        "name": "IAM_ADMIN",
+        "description": "Administra usuarios y roles dentro del módulo IAM"
+      },
+      {
+        "name": "TENANT_ADMIN",
+        "description": "Administra la configuración del tenant asignado"
+      },
+      {
+        "name": "AUDITOR",
+        "description": "Acceso de solo lectura a los registros de auditoría del IAM"
       }
     ]
   },
@@ -146,7 +162,8 @@
       ],
       "clientRoles": {},
       "realmRoles": [
-        "auth-manager-admin"
+        "auth-manager-admin",
+        "SUPER_ADMIN"
       ]
     },
     {
@@ -180,7 +197,9 @@
           "query-users",
           "query-groups",
           "view-clients",
-          "manage-clients"
+          "manage-clients",
+          "view-realm",
+          "query-realm"
         ]
       }
     }

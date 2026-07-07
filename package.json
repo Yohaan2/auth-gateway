@@ -7,6 +7,9 @@
     "dev": "npm run dev --workspace=server",
     "build": "npm run build --workspaces",
     "start": "npm run start --workspace=server",
+    "db:push": "npx drizzle-kit push",
+    "db:generate": "npx drizzle-kit generate",
+    "db:studio": "npx drizzle-kit studio",
     "lint": "npm run lint --workspaces",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md}\""
   },
@@ -16,6 +19,8 @@
   ],
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "drizzle-kit": "^0.21.4",
+    "drizzle-orm": "^0.30.10",
     "prettier": "^3.2.5",
     "typescript": "^5.3.3"
   }

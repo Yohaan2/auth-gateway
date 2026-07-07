@@ -2,6 +2,9 @@ import { Router } from "express";
 import { kcAdmin } from "../services/keycloak-admin.service";
 import { requireJwt, requireAdminOrViewer, requireAdmin } from "../middleware/jwt-auth";
 import { logAudit } from "../audit/audit.service";
+import { db } from "../db/client";
+import { gatewayClients } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -37,6 +40,30 @@ router.post("/", requireAdmin, async (req, res, next) => {
 
     const newId = await kcAdmin.createClient({ clientId, name, description, enabled: enabled ?? true, publicClient: publicClient ?? false, redirectUris, webOrigins, standardFlowEnabled: standardFlowEnabled ?? true, serviceAccountsEnabled: serviceAccountsEnabled ?? false });
 
+    // Los clientes confidenciales se registran automáticamente en el gateway de login,
+    // ya que este flujo requiere un client_secret (grant_type=password) para autenticar módulos externos.
+    if (!publicClient) {
+      try {
+        const { value: clientSecret } = await kcAdmin.getClientSecret(newId);
+        const [existing] = await db
+          .select()
+          .from(gatewayClients)
+          .where(eq(gatewayClients.clientId, clientId))
+          .limit(1);
+
+        if (!existing) {
+          await db.insert(gatewayClients).values({
+            clientId,
+            clientSecret,
+            name: name?.trim() || clientId,
+            active: enabled ?? true,
+          });
+        }
+      } catch (gwErr) {
+        console.error(`⚠️ No se pudo registrar '${clientId}' en el gateway:`, gwErr);
+      }
+    }
+
     await logAudit({ actor: req.jwtPayload!, action: "create_client", entity: "client", entityId: newId, detail: { clientId } });
     res.status(201).json({ id: newId, message: "Cliente (módulo) creado." });
   } catch (err) {
@@ -59,6 +86,14 @@ router.put("/:id", requireAdmin, async (req, res, next) => {
 
     // Para habilitar/deshabilitar también se puede usar este endpoint
     await kcAdmin.updateClient(req.params.id, { clientId, name, description, enabled, publicClient, redirectUris, webOrigins });
+
+    // Mantener sincronizado el estado del módulo en la tabla del gateway
+    if (clientId && (enabled !== undefined || name !== undefined)) {
+      const updates: Record<string, unknown> = { updatedAt: new Date() };
+      if (enabled !== undefined) updates.active = enabled;
+      if (name?.trim()) updates.name = name.trim();
+      await db.update(gatewayClients).set(updates).where(eq(gatewayClients.clientId, clientId));
+    }
 
     const action = req.body.enabled !== undefined
       ? (req.body.enabled ? "enable_client" : "disable_client")

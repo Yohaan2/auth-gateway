@@ -22,6 +22,10 @@ import dashboardRouter from "./routes/dashboard";
 import usersRouter from "./routes/users";
 import rolesRouter from "./routes/roles";
 import clientsRouter from "./routes/clients";
+import templatesRouter from "./routes/templates";
+
+// Módulo IAM — Fase 1: roles administrativos, RBAC y endpoint /me
+import iamRouter from "./routes/iam";
 
 // Gateway público (login de módulos externos)
 import gatewayRouter from "./routes/gateway";
@@ -103,7 +107,11 @@ async function startServer() {
   app.use("/api/admin/users", usersRouter);
   app.use("/api/admin/roles", rolesRouter);
   app.use("/api/admin/clients", clientsRouter);
+  app.use("/api/admin/templates", templatesRouter);
   app.use("/api/admin/gateway/clients", gatewayAdminRouter);
+
+  // Módulo IAM — Fase 1 (roles administrativos globales + RBAC)
+  app.use("/api/iam", iamRouter);
 
   // Gateway público — para login de módulos externos (sin JWT del panel)
   app.use("/api/gateway", gatewayRouter);

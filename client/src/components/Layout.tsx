@@ -10,22 +10,34 @@ import {
   Shield,
   Menu,
   X,
+  LayoutTemplate,
 } from "lucide-react";
 import { useState } from "react";
 import { useRoles } from "../auth/useRoles";
+import { useIamAccess } from "../auth/useIamAccess";
+import type { IamPermission } from "../api/admin-api";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { path: string; label: string; icon: typeof LayoutDashboard; permission?: IamPermission }[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/users", label: "Usuarios", icon: Users },
-  { path: "/roles", label: "Roles", icon: ShieldCheck },
-  { path: "/modules", label: "Módulos", icon: AppWindow },
+  { path: "/users", label: "Usuarios", icon: Users, permission: "iam:manage_users" },
+  { path: "/roles", label: "Roles", icon: ShieldCheck, permission: "iam:manage_roles" },
+  { path: "/modules", label: "Módulos", icon: AppWindow, permission: "iam:manage_settings" },
+  { path: "/templates", label: "Plantillas de Acceso", icon: LayoutTemplate, permission: "iam:manage_templates" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, signoutRedirect } = useAuth();
   const { isAdmin, isViewer } = useRoles();
+  const { hasPermission, isLoading: iamLoading } = useIamAccess();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Mientras se resuelven los permisos IAM, o si el usuario no tiene ningún
+  // rol administrativo del IAM (p. ej. solo auth-manager-viewer legacy),
+  // se muestran todos los ítems para no romper el flujo existente del panel.
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.permission || iamLoading || hasPermission(item.permission)
+  );
 
   const displayName =
     (user?.profile?.name as string) ||
@@ -67,7 +79,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 space-y-0.5">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+          {visibleNavItems.map(({ path, label, icon: Icon }) => {
             const active =
               path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
             return (
