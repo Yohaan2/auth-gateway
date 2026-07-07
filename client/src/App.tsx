@@ -14,6 +14,7 @@ import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
 import Roles from "./pages/Roles";
 import Modules from "./pages/Modules";
+import Templates from "./pages/Templates";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -129,6 +130,7 @@ function AppContent() {
           <Route path="/users/:id" element={<UserDetail />} />
           <Route path="/roles" element={<Roles />} />
           <Route path="/modules" element={<Modules />} />
+          <Route path="/templates" element={<Templates />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
