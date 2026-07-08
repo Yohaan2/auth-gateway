@@ -97,6 +97,8 @@ export interface CreateUserPayload {
   emailVerified?: boolean;
   requiredActions?: string[];
   credentials?: Array<{ type: string; value: string; temporary: boolean }>;
+  // Atributos personalizados del usuario (claims de la plantilla, tenant, etc.)
+  attributes?: Record<string, string[]>;
 }
 
 export interface UpdateUserPayload {
@@ -119,6 +121,7 @@ export interface CreateClientPayload {
   webOrigins?: string[];
   standardFlowEnabled?: boolean;
   serviceAccountsEnabled?: boolean;
+  directAccessGrantsEnabled?: boolean;
 }
 
 export interface UpdateClientPayload extends Partial<CreateClientPayload> {}
@@ -360,7 +363,7 @@ class KeycloakAdminService {
     return this.req({ method: "GET", url: `/roles/${encodeURIComponent(roleName)}/users` });
   }
 
-  // ─── Grupos ──────────────────────────────────────────────────────────────
+  // ─── Grupos ────────────────────────────────────────────────────
 
   listGroups(params: { search?: string; first?: number; max?: number } = {}): Promise<KcGroup[]> {
     return this.req({ method: "GET", url: "/groups", params });
@@ -408,6 +411,49 @@ class KeycloakAdminService {
 
   removeUserFromGroup(userId: string, groupId: string): Promise<void> {
     return this.req({ method: "DELETE", url: `/users/${userId}/groups/${groupId}` });
+  }
+
+  /**
+   * Busca un grupo por su path exacto (ej. "/optrax-tenant-acme").
+   * Recorre todos los grupos del realm de forma superficial.
+   * Devuelve null si no se encuentra.
+   */
+  async getGroupByPath(path: string): Promise<KcGroup | null> {
+    const groups = await this.listGroups();
+    const normalized = path.startsWith("/") ? path : `/${path}`;
+    const found = groups.find((g) => g.path === normalized || g.name === path);
+    return found ?? null;
+  }
+
+  /** Añade un usuario a un grupo de Keycloak. */
+  addUserToGroup(userId: string, groupId: string): Promise<void> {
+    return this.req({ method: "PUT", url: `/users/${userId}/groups/${groupId}` });
+  }
+
+  /** Elimina un usuario de un grupo de Keycloak. */
+  removeUserFromGroup(userId: string, groupId: string): Promise<void> {
+    return this.req({ method: "DELETE", url: `/users/${userId}/groups/${groupId}` });
+  }
+
+  /**
+   * Actualiza los atributos personalizados del usuario sin modificar otros campos.
+   * Los atributos en Keycloak son Record<string, string[]>.
+   */
+  updateUserAttributes(userId: string, attributes: Record<string, string[]>): Promise<void> {
+    // Se necesita el objeto completo del usuario para hacer el PUT sin sobreescribir otros campos
+    return this.req({ method: "PUT", url: `/users/${userId}`, data: { attributes } });
+  }
+
+  /**
+   * Envía el email de activación al usuario (execute-actions-email con UPDATE_PASSWORD).
+   * Keycloak manda un email con un enlace para que el usuario establezca su contraseña.
+   */
+  sendActivationEmail(userId: string): Promise<void> {
+    return this.req({
+      method: "PUT",
+      url: `/users/${userId}/execute-actions-email`,
+      data: ["UPDATE_PASSWORD"],
+    });
   }
 }
 

@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { z } from "zod";
 import { kcAdmin } from "../services/keycloak-admin.service";
+import { provisioningService } from "../services/provisioning.service";
 import { requireJwt, requireAdminOrViewer, requireAdmin } from "../middleware/jwt-auth";
 import { logAudit } from "../audit/audit.service";
 import { Permissions } from "../common/decorators/roles.decorator";
@@ -9,6 +11,26 @@ import { sensitiveLimiter } from "../middleware/rate-limiter";
 const router = Router();
 
 router.use(requireJwt);
+
+// ─── Esquemas de validación ───────────────────────────────────────────────────
+
+const createProvisionedUserSchema = z.object({
+  username: z.string().min(1, "El campo 'username' es obligatorio."),
+  email: z.string().email("Email inválido.").optional().or(z.literal("")),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  /** Texto libre en esta fase. Se conectará al módulo de tenants en el futuro. */
+  tenant: z.string().optional(),
+  /** UUID de la plantilla de acceso a aplicar. */
+  templateId: z.string().uuid("templateId debe ser un UUID válido.").optional(),
+  enabled: z.boolean().optional().default(true),
+  /** Si true, Keycloak enviará un email de activación al usuario. */
+  sendActivationEmail: z.boolean().optional().default(false),
+  /** Contraseña inicial opcional */
+  password: z.string().optional(),
+  /** Contraseña temporal */
+  temporaryPassword: z.boolean().optional().default(false),
+});
 
 // ─── Listado y búsqueda ───────────────────────────────────────────────────────
 
@@ -37,36 +59,35 @@ router.get("/", requireAdminOrViewer, async (req, res, next) => {
   }
 });
 
-// ─── Crear usuario ────────────────────────────────────────────────────────────
+// ─── Crear usuario con aprovisionamiento completo (Fase 4) ────────────────────
 
 router.post("/", requireAdmin, sensitiveLimiter, async (req, res, next) => {
   try {
-    const { username, email, firstName, lastName, enabled, emailVerified, password, temporaryPassword, requiredActions } = req.body;
-
-    if (!username) {
-      return res.status(400).json({ error: "El campo 'username' es obligatorio." });
+    const parsed = createProvisionedUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Datos inválidos.", details: parsed.error.flatten() });
     }
 
-    const payload: any = { username, email, firstName, lastName, enabled: enabled ?? true, emailVerified: emailVerified ?? false };
-    if (password) {
-      payload.credentials = [{ type: "password", value: password, temporary: temporaryPassword ?? true }];
-    }
-    if (requiredActions?.length) {
-      payload.requiredActions = requiredActions;
-    }
+    const result = await provisioningService.createAndProvisionUser(
+      {
+        ...parsed.data,
+        // Normalizar email vacío como undefined
+        email: parsed.data.email?.trim() || undefined,
+      },
+      req.jwtPayload!
+    );
 
-    const newId = await kcAdmin.createUser(payload);
-
-    await logAudit({
-      actor: req.jwtPayload!,
-      action: "create_user",
-      entity: "user",
-      entityId: newId,
-      detail: { username, email },
+    res.status(201).json({
+      id: result.keycloakId,
+      iamUserId: result.iamUserId,
+      message: result.templateApplied
+        ? "Usuario creado y aprovisionado con la plantilla de acceso."
+        : "Usuario creado exitosamente.",
+      templateApplied: result.templateApplied,
+      activationEmailSent: result.activationEmailSent,
     });
-
-    res.status(201).json({ id: newId, message: "Usuario creado exitosamente." });
-  } catch (err) {
+  } catch (err: any) {
+    // El servicio ya hizo rollback en Keycloak si fue necesario
     next(err);
   }
 });
@@ -77,6 +98,20 @@ router.get("/:id", requireAdminOrViewer, async (req, res, next) => {
   try {
     const user = await kcAdmin.getUser(req.params.id);
     res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Perfil IAM del usuario (DB local) ───────────────────────────────────────
+
+router.get("/:id/iam-profile", requireAdminOrViewer, async (req, res, next) => {
+  try {
+    const profile = await provisioningService.getIamProfile(req.params.id);
+    if (!profile) {
+      return res.status(404).json({ error: "Perfil IAM no encontrado para este usuario." });
+    }
+    res.json(profile);
   } catch (err) {
     next(err);
   }
@@ -228,6 +263,72 @@ router.get("/:id/groups", requireAdminOrViewer, async (req, res, next) => {
   try {
     const groups = await kcAdmin.getUserGroups(req.params.id);
     res.json(groups);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Gestión de plantilla (Fase 4) ───────────────────────────────────────────
+
+/**
+ * PUT /api/admin/users/:id/template
+ * Cambia la plantilla de acceso asignada a un usuario.
+ * Desasigna la plantilla anterior y aplica la nueva en Keycloak.
+ */
+router.put("/:id/template", Permissions(IAM_PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
+  try {
+    const { templateId } = req.body;
+    if (!templateId || typeof templateId !== "string") {
+      return res.status(400).json({ error: "El campo 'templateId' es obligatorio." });
+    }
+
+    await provisioningService.changeTemplate(req.params.id, templateId, req.jwtPayload!);
+    res.json({ message: "Plantilla de acceso actualizada." });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/reapply-template
+ * Reaaplica la plantilla actual al usuario (idempotente).
+ */
+router.post("/:id/reapply-template", Permissions(IAM_PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
+  try {
+    await provisioningService.reapplyTemplate(req.params.id, req.jwtPayload!);
+    res.json({ message: "Plantilla reaplicada exitosamente." });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/sync
+ * Sincroniza el estado del usuario entre Keycloak y la DB del IAM.
+ */
+router.post("/:id/sync", Permissions(IAM_PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
+  try {
+    await provisioningService.syncUser(req.params.id, req.jwtPayload!);
+    res.json({ message: "Usuario sincronizado exitosamente." });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/activation-email
+ * Envía un email de activación al usuario.
+ */
+router.post("/:id/activation-email", requireAdmin, sensitiveLimiter, async (req, res, next) => {
+  try {
+    await kcAdmin.sendActivationEmail(req.params.id);
+    await logAudit({
+      actor: req.jwtPayload!,
+      action: "send_activation_email",
+      entity: "iam_user",
+      entityId: req.params.id,
+    });
+    res.json({ message: "Email de activación enviado." });
   } catch (err) {
     next(err);
   }

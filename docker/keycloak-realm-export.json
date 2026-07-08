@@ -308,7 +308,9 @@
           "view-clients",
           "manage-clients",
           "view-realm",
-          "query-realm"
+          "query-realm",
+          "manage-realm",
+          "manage-roles"
         ]
       },
       "groups": []

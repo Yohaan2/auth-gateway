@@ -43,6 +43,7 @@ export interface KcUser {
   emailVerified: boolean;
   createdTimestamp?: number;
   requiredActions?: string[];
+  attributes?: Record<string, string[]>;
 }
 
 export interface KcRole {
@@ -155,6 +156,35 @@ export const usersApi = {
     api.delete(`/users/${id}/roles/clients/${clientUuid}`, { data: { roles } }).then((r) => r.data),
 
   getGroups: (id: string) => api.get(`/users/${id}/groups`).then((r) => r.data),
+
+  // ─── Fase 4 ────────────────────────────────────────────────────────
+
+  /**
+   * Crea un usuario con aprovisionamiento completo de plantilla.
+   * Este es el endpoint principal de la Fase 4.
+   */
+  createProvisioned: (payload: CreateProvisionedUserPayload) =>
+    api.post<{ id: string; iamUserId: string; message: string; templateApplied: boolean; activationEmailSent: boolean }>("/users", payload).then((r) => r.data),
+
+  /** Obtiene el perfil IAM (DB local) del usuario, incluyendo plantilla asignada. */
+  getIamProfile: (id: string) =>
+    api.get<IamUserProfile>(`/users/${id}/iam-profile`).then((r) => r.data),
+
+  /** Cambia la plantilla de acceso del usuario. Desasigna la anterior y aplica la nueva. */
+  changeTemplate: (id: string, templateId: string) =>
+    api.put<{ message: string }>(`/users/${id}/template`, { templateId }).then((r) => r.data),
+
+  /** Reaaplica la plantilla actual al usuario (idempotente). */
+  reapplyTemplate: (id: string) =>
+    api.post<{ message: string }>(`/users/${id}/reapply-template`).then((r) => r.data),
+
+  /** Sincroniza el estado del usuario entre Keycloak y la DB del IAM. */
+  syncUser: (id: string) =>
+    api.post<{ message: string }>(`/users/${id}/sync`).then((r) => r.data),
+
+  /** Envía un email de activación al usuario. */
+  sendActivationEmail: (id: string) =>
+    api.post<{ message: string }>(`/users/${id}/activation-email`).then((r) => r.data),
 };
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -262,6 +292,52 @@ export interface TemplatePayload {
   groups?: TemplateGroupInput[];
   claims?: TemplateClaimInput[];
   permissions?: TemplatePermissionInput[];
+}
+
+// ─── Tipos Fase 4 ───────────────────────────────────────────────────────
+
+/**
+ * Payload para crear un usuario con aprovisionamiento completo (Fase 4).
+ * Reemplaza el payload básico de Fase 1.
+ */
+export interface CreateProvisionedUserPayload {
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  /** Texto libre en esta fase. Se sustituirá por un selector de tenants en el futuro. */
+  tenant?: string;
+  /** UUID de la plantilla de acceso a aplicar al usuario. */
+  templateId?: string;
+  enabled?: boolean;
+  /** Si true, Keycloak enviará un email al usuario para que establezca su contraseña. */
+  sendActivationEmail?: boolean;
+  /** Contraseña manual inicial */
+  password?: string;
+  /** Contraseña temporal (fuerza cambio en primer login) */
+  temporaryPassword?: boolean;
+}
+
+/** Perfil IAM de un usuario (datos de la DB local del IAM). */
+export interface IamUserProfile {
+  id: string;
+  keycloakId: string;
+  username: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  tenant?: string | null;
+  templateId?: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** Datos de la plantilla asignada. Null si no tiene plantilla. */
+  template?: {
+    id: string;
+    name: string;
+    description?: string | null;
+    active: boolean;
+  } | null;
 }
 
 export const templatesApi = {
