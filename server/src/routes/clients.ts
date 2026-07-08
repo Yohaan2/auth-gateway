@@ -38,7 +38,7 @@ router.post("/", requireAdmin, async (req, res, next) => {
     const { clientId, name, description, enabled, publicClient, redirectUris, webOrigins, standardFlowEnabled, serviceAccountsEnabled } = req.body;
     if (!clientId) return res.status(400).json({ error: "El campo 'clientId' es obligatorio." });
 
-    const newId = await kcAdmin.createClient({ clientId, name, description, enabled: enabled ?? true, publicClient: publicClient ?? false, redirectUris, webOrigins, standardFlowEnabled: standardFlowEnabled ?? true, serviceAccountsEnabled: serviceAccountsEnabled ?? false });
+    const newId = await kcAdmin.createClient({ clientId, name, description, enabled: enabled ?? true, publicClient: publicClient ?? false, redirectUris, webOrigins, standardFlowEnabled: standardFlowEnabled ?? true, serviceAccountsEnabled: serviceAccountsEnabled ?? false, directAccessGrantsEnabled: true });
 
     // Los clientes confidenciales se registran automáticamente en el gateway de login,
     // ya que este flujo requiere un client_secret (grant_type=password) para autenticar módulos externos.

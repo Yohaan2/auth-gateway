@@ -9,6 +9,29 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── Usuarios IAM (Fase 4) ────────────────────────────────────────────────────
+//
+// Fuente canónica de usuarios gestionados por el IAM. Registra la relación
+// usuario-plantilla, el tenant asignado y el estado de aprovisionamiento.
+// La tabla `users` existente es legacy (sesiones). Esta es la fuente de verdad
+// para el flujo de creación/aprovisionamiento de Fase 4 en adelante.
+
+export const iamUsers = pgTable("iam_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  keycloakId: varchar("keycloak_id", { length: 255 }).notNull().unique(),
+  username: varchar("username", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  firstName: varchar("first_name", { length: 255 }),
+  lastName: varchar("last_name", { length: 255 }),
+  // Tenant: texto libre en esta fase. Se conectará al módulo de tenants en el futuro.
+  tenant: varchar("tenant", { length: 255 }),
+  // Plantilla de acceso asignada al usuario (puede ser null si no se aplicó plantilla).
+  templateId: uuid("template_id").references(() => accessTemplates.id, { onDelete: "set null" }),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   actorSub: varchar("actor_sub", { length: 255 }).notNull(),
@@ -112,3 +135,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
+
+// ─── Tipos Fase 4 (iam_users) ─────────────────────────────────────────────────
+export type IamUser = typeof iamUsers.$inferSelect;
+export type NewIamUser = typeof iamUsers.$inferInsert;

@@ -3,9 +3,12 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, CheckCircle, XCircle, Trash2, KeyRound, LogOut,
-  Monitor, RefreshCw, Mail, Save
+  Monitor, RefreshCw, Mail, Save, Shield, LayoutTemplate, RotateCcw, RefreshCwIcon
 } from "lucide-react";
-import { usersApi, rolesApi, clientsApi, type KcRole, IAM_PERMISSIONS } from "../api/admin-api";
+import {
+  usersApi, rolesApi, clientsApi, templatesApi,
+  type KcRole, type AccessTemplate, IAM_PERMISSIONS
+} from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RoleDualList from "../components/RoleDualList";
 import { useRoles } from "../auth/useRoles";
@@ -34,12 +37,24 @@ export default function UserDetail() {
   const [confirmRevoke, setConfirmRevoke] = useState(false);
   const [resetPwForm, setResetPwForm] = useState({ open: false, password: "", temporary: true });
   const [editForm, setEditForm] = useState<null | Record<string, any>>(null);
+  // Fase 4: estado para cambio de plantilla
+  const [changeTemplateOpen, setChangeTemplateOpen] = useState(false);
+  const [selectedNewTemplate, setSelectedNewTemplate] = useState("");
+  const [provActionLoading, setProvActionLoading] = useState<string | null>(null);
 
   const userQ = useQuery({ queryKey: ["user", id], queryFn: () => usersApi.get(id!) });
   const sessionsQ = useQuery({ queryKey: ["user-sessions", id], queryFn: () => usersApi.getSessions(id!) });
   const roleMappingsQ = useQuery({ queryKey: ["user-roles", id], queryFn: () => usersApi.getRoles(id!) });
   const allRealmRolesQ = useQuery({ queryKey: ["realm-roles"], queryFn: rolesApi.list });
   const clientsQ = useQuery({ queryKey: ["clients"], queryFn: () => clientsApi.list() });
+  // Fase 4: perfil IAM del usuario desde DB local
+  const iamProfileQ = useQuery({
+    queryKey: ["iam-user-profile", id],
+    queryFn: () => usersApi.getIamProfile(id!),
+    retry: false, // 404 es válido (usuario sin perfil IAM)
+  });
+  // Fase 4: plantillas disponibles para cambio
+  const templatesQ = useQuery({ queryKey: ["access-templates"], queryFn: templatesApi.list });
 
   const user = userQ.data;
   const assignedRealmRoles = roleMappingsQ.data?.realmMappings ?? [];
@@ -114,6 +129,62 @@ export default function UserDetail() {
       qc.invalidateQueries({ queryKey: ["user-roles", id] });
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? "Error al actualizar roles.");
+    }
+  };
+
+  // ─── Handlers Fase 4 (aprovisionamiento) ────────────────────────────────
+
+  const handleChangeTemplate = async () => {
+    if (!selectedNewTemplate) return;
+    setProvActionLoading("change");
+    try {
+      await usersApi.changeTemplate(id!, selectedNewTemplate);
+      toast.success("Plantilla de acceso actualizada.");
+      setChangeTemplateOpen(false);
+      setSelectedNewTemplate("");
+      iamProfileQ.refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Error al cambiar la plantilla.");
+    } finally {
+      setProvActionLoading(null);
+    }
+  };
+
+  const handleReapplyTemplate = async () => {
+    setProvActionLoading("reapply");
+    try {
+      await usersApi.reapplyTemplate(id!);
+      toast.success("Plantilla reaplicada exitosamente.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Error al reaplicar la plantilla.");
+    } finally {
+      setProvActionLoading(null);
+    }
+  };
+
+  const handleSyncUser = async () => {
+    setProvActionLoading("sync");
+    try {
+      await usersApi.syncUser(id!);
+      toast.success("Usuario sincronizado.");
+      iamProfileQ.refetch();
+      userQ.refetch();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Error al sincronizar.");
+    } finally {
+      setProvActionLoading(null);
+    }
+  };
+
+  const handleSendActivationEmail = async () => {
+    setProvActionLoading("email");
+    try {
+      await usersApi.sendActivationEmail(id!);
+      toast.success("Email de activación enviado.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Error al enviar email de activación.");
+    } finally {
+      setProvActionLoading(null);
     }
   };
 
@@ -397,6 +468,166 @@ export default function UserDetail() {
           </div>
         )}
       </Section>
+
+      {/* ─── Sección Aprovisionamiento IAM (Fase 4) ────────────────── */}
+      {hasPermission(IAM_PERMISSIONS.MANAGE_USERS) && (
+        <Section title="Aprovisionamiento IAM">
+          {iamProfileQ.isLoading ? (
+            <p className="text-sm text-gray-400">Cargando perfil IAM...</p>
+          ) : !iamProfileQ.data ? (
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+              <Shield size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Sin perfil IAM</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Este usuario fue creado antes de la Fase 4 o directamente en Keycloak.
+                  No tiene un perfil IAM registrado en la base de datos del IAM.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Info */}
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                <div>
+                  <dt className="text-xs text-gray-500 font-medium">Tenant</dt>
+                  <dd className="text-sm text-gray-800 mt-0.5">
+                    {iamProfileQ.data.tenant ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                        {iamProfileQ.data.tenant}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">Sin tenant asignado</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-500 font-medium">Plantilla de acceso</dt>
+                  <dd className="text-sm text-gray-800 mt-0.5">
+                    {iamProfileQ.data.template ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full text-xs font-medium">
+                        <LayoutTemplate size={10} />
+                        {iamProfileQ.data.template.name}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">Sin plantilla asignada</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-500 font-medium">Creado en IAM</dt>
+                  <dd className="text-sm text-gray-800 mt-0.5">
+                    {new Date(iamProfileQ.data.createdAt).toLocaleString("es-MX")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-gray-500 font-medium">Última actualización</dt>
+                  <dd className="text-sm text-gray-800 mt-0.5">
+                    {new Date(iamProfileQ.data.updatedAt).toLocaleString("es-MX")}
+                  </dd>
+                </div>
+              </dl>
+
+              {/* Acciones */}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                {/* Cambiar plantilla */}
+                <button
+                  onClick={() => setChangeTemplateOpen(true)}
+                  disabled={provActionLoading !== null}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 disabled:opacity-50 transition-colors"
+                >
+                  <LayoutTemplate size={12} />
+                  Cambiar plantilla
+                </button>
+
+                {/* Reaplicar plantilla */}
+                {iamProfileQ.data.templateId && (
+                  <button
+                    onClick={handleReapplyTemplate}
+                    disabled={provActionLoading !== null}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                  >
+                    {provActionLoading === "reapply" ? (
+                      <RefreshCwIcon size={12} className="animate-spin" />
+                    ) : (
+                      <RotateCcw size={12} />
+                    )}
+                    Reaplicar plantilla
+                  </button>
+                )}
+
+                {/* Sincronizar con Keycloak */}
+                <button
+                  onClick={handleSyncUser}
+                  disabled={provActionLoading !== null}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  {provActionLoading === "sync" ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={12} />
+                  )}
+                  Sincronizar con Keycloak
+                </button>
+
+                {/* Email de activación */}
+                {isAdmin && (
+                  <button
+                    onClick={handleSendActivationEmail}
+                    disabled={provActionLoading !== null}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                  >
+                    {provActionLoading === "email" ? (
+                      <Mail size={12} className="animate-spin" />
+                    ) : (
+                      <Mail size={12} />
+                    )}
+                    Enviar email de activación
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Modal: cambio de plantilla */}
+      {changeTemplateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setChangeTemplateOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-sm font-bold text-gray-900">Cambiar plantilla de acceso</h3>
+            <p className="text-xs text-gray-500">
+              Se desasignarán los roles/grupos de la plantilla actual y se aplicarán los de la nueva.
+            </p>
+            <select
+              value={selectedNewTemplate}
+              onChange={(e) => setSelectedNewTemplate(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <option value="">Selecciona una plantilla...</option>
+              {(templatesQ.data ?? []).filter((t: AccessTemplate) => t.active).map((t: AccessTemplate) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setChangeTemplateOpen(false); setSelectedNewTemplate(""); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleChangeTemplate}
+                disabled={!selectedNewTemplate || provActionLoading === "change"}
+                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {provActionLoading === "change" ? "Aplicando..." : "Cambiar plantilla"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Diálogos de confirmación */}
       <ConfirmDialog
