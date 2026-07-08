@@ -78,16 +78,20 @@ class ProvisioningService {
     }
 
     let templateApplied = false;
+    let tenantName: string | null = null;
 
     try {
       // ── 2. Asignar al tenant (si se proporcionó el KC group ID) ──────────
       if (input.tenantId) {
         await kcAdmin.addUserToGroup(keycloakId, input.tenantId);
+        // Obtener el nombre del tenant para guardarlo en iam_users
+        const tenantGroup = await kcAdmin.getGroup(input.tenantId);
+        tenantName = tenantGroup.name;
       }
 
       // ── 3. Aplicar la plantilla (si se proporcionó) ───────────────────────
       if (input.templateId) {
-        await this.applyTemplateToUser(keycloakId, input.templateId, undefined);
+        await this.applyTemplateToUser(keycloakId, input.templateId, tenantName ?? undefined);
         templateApplied = true;
       }
     } catch (err) {
@@ -123,7 +127,7 @@ class ProvisioningService {
         email: input.email,
         firstName: input.firstName,
         lastName: input.lastName,
-        tenant: input.tenantId ?? null,
+        tenant: tenantName,
         templateId: input.templateId ?? null,
         enabled: input.enabled ?? true,
       })

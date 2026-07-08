@@ -12,7 +12,7 @@
 import { Router } from "express";
 import axios from "axios";
 import { db } from "../db/client";
-import { gatewayClients } from "../db/schema";
+import { gatewayClients, iamUsers } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
 import { sensitiveLimiter } from "../middleware/rate-limiter";
@@ -93,7 +93,6 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
       client_secret: gwClient.clientSecret,
       username,
       password,
-      scope: "openid profile email",
     });
 
     let kcResponse: any;
@@ -124,8 +123,18 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
     const resourceAccess = (payload.resource_access as Record<string, { roles: string[] }>) ?? {};
     const clientRoles: string[] = resourceAccess[clientId]?.roles ?? [];
     const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
+    const groups: string[] = (payload.groups as string[]) ?? [];
 
     const businessRoles = realmRoles.filter((role) => !ignoredRoles.includes(role));
+
+    // Obtener tenant de la base de datos iam_users
+    const [iamUser] = await db
+      .select()
+      .from(iamUsers)
+      .where(eq(iamUsers.keycloakId, payload.sub as string))
+      .limit(1);
+
+    const tenant = iamUser?.tenant ?? null;
 
     res.json({
       access_token: kcResponse.access_token,
@@ -139,6 +148,8 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
         name: payload.name,
         roles: clientRoles,  // roles del módulo que hizo login
         realmRoles: businessRoles,
+        groups,
+        tenant,
       },
     });
   } catch (err) {
@@ -182,6 +193,7 @@ router.post("/refresh", async (req, res, next) => {
       const resourceAccess = (payload.resource_access as Record<string, { roles: string[] }>) ?? {};
       const clientRoles: string[] = resourceAccess[clientId]?.roles ?? [];
       const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
+      const groups: string[] = (payload.groups as string[]) ?? [];
 
       const internalClients = new Set(["account", "account-console", "broker", "realm-management", "security-admin-console"]);
       const modules: Record<string, string[]> = {};
@@ -190,6 +202,15 @@ router.post("/refresh", async (req, res, next) => {
           modules[cid] = val.roles;
         }
       }
+
+      // Obtener tenant de la base de datos iam_users
+      const [iamUser] = await db
+        .select()
+        .from(iamUsers)
+        .where(eq(iamUsers.keycloakId, payload.sub as string))
+        .limit(1);
+
+      const tenant = iamUser?.tenant ?? null;
 
       res.json({
         access_token: data.access_token,
@@ -202,6 +223,8 @@ router.post("/refresh", async (req, res, next) => {
           email: payload.email,
           roles: clientRoles,
           realmRoles,
+          groups,
+          tenant,
           modules,
         },
       });
@@ -273,6 +296,7 @@ router.get("/verify", async (req, res, next) => {
       const resourceAccess = ((payload as any).resource_access as Record<string, { roles: string[] }>) ?? {};
       const clientRoles: string[] = clientId ? resourceAccess[clientId]?.roles ?? [] : [];
       const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
+      const groups: string[] = ((payload as any).groups as string[]) ?? [];
 
       const internalClients = new Set(["account", "account-console", "broker", "realm-management", "security-admin-console"]);
       const modules: Record<string, string[]> = {};
@@ -281,6 +305,15 @@ router.get("/verify", async (req, res, next) => {
           modules[cid] = val.roles;
         }
       }
+
+      // Obtener tenant de la base de datos iam_users
+      const [iamUser] = await db
+        .select()
+        .from(iamUsers)
+        .where(eq(iamUsers.keycloakId, payload.sub as string))
+        .limit(1);
+
+      const tenant = iamUser?.tenant ?? null;
 
       res.json({
         valid: true,
@@ -291,6 +324,8 @@ router.get("/verify", async (req, res, next) => {
           name: (payload as any).name,
           roles: clientRoles,
           realmRoles,
+          groups,
+          tenant,
           modules,
         },
         expiresAt: payload.exp ? new Date(payload.exp * 1000).toISOString() : null,
