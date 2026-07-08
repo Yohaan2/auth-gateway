@@ -305,8 +305,8 @@ export interface CreateProvisionedUserPayload {
   email?: string;
   firstName?: string;
   lastName?: string;
-  /** Texto libre en esta fase. Se sustituirá por un selector de tenants en el futuro. */
-  tenant?: string;
+  /** ID del grupo Keycloak (tenant) al que asignar el usuario. */
+  tenantId?: string;
   /** UUID de la plantilla de acceso a aplicar al usuario. */
   templateId?: string;
   enabled?: boolean;
@@ -359,6 +359,53 @@ export const templatesApi = {
     api
       .get<{ id: string; name: string; path?: string }[]>("/templates/keycloak/groups")
       .then((r) => r.data),
+};
+
+// ─── Tenants (Grupos de Keycloak) — Fase 4 ───────────────────────────────────
+
+export interface TenantView {
+  id: string;
+  name: string;
+  path: string;
+  slug: string;
+  attributes: Record<string, string[]>;
+  description: string | null;
+  active: boolean;
+  settings: Record<string, unknown> | null;
+  dbId: string | null;
+}
+
+export type TenantMember = KcUser;
+
+export const tenantsApi = {
+  list: () =>
+    api.get<{ tenants: TenantView[]; total: number }>("/tenants").then((r) => r.data),
+
+  get: (id: string) => api.get<TenantView>(`/tenants/${id}`).then((r) => r.data),
+
+  create: (payload: { name: string; slug?: string; description?: string }) =>
+    api.post<{ tenant: TenantView; message: string }>("/tenants", payload).then((r) => r.data),
+
+  update: (id: string, payload: { name?: string; description?: string; active?: boolean }) =>
+    api.put<{ tenant: TenantView; message: string }>(`/tenants/${id}`, payload).then((r) => r.data),
+
+  delete: (id: string) => api.delete<{ message: string }>(`/tenants/${id}`).then((r) => r.data),
+
+  getMembers: (id: string) =>
+    api
+      .get<{ members: TenantMember[]; total: number }>(`/tenants/${id}/members`)
+      .then((r) => r.data),
+
+  addMember: (id: string, userId: string) =>
+    api.post<{ message: string }>(`/tenants/${id}/members`, { userId }).then((r) => r.data),
+
+  moveMember: (fromTenantId: string, userId: string, targetTenantId: string) =>
+    api
+      .put<{ message: string }>(`/tenants/${fromTenantId}/members/${userId}/move`, { targetTenantId })
+      .then((r) => r.data),
+
+  removeMember: (id: string, userId: string) =>
+    api.delete<{ message: string }>(`/tenants/${id}/members/${userId}`).then((r) => r.data),
 };
 
 // ─── IAM — Fase 1 (roles administrativos + RBAC) ────────────────────────────

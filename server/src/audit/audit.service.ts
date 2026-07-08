@@ -11,14 +11,10 @@ export type AuditAction =
   | "create_client" | "update_client" | "delete_client" | "enable_client" | "disable_client"
   | "create_client_role" | "update_client_role" | "delete_client_role"
   | "create_template" | "update_template" | "delete_template"
-  // Fase 4 — aprovisionamiento de usuarios
-  | "provision_user"         // creación + aplicación completa de plantilla
-  | "change_user_template"   // cambio de plantilla asignada
-  | "reapply_user_template"  // reaplicación de la plantilla actual
-  | "sync_user"              // sincronización IAM DB ↔ Keycloak
-  | "send_activation_email"; // envío de email de activación
+  | "create_tenant" | "update_tenant" | "delete_tenant"
+  | "add_tenant_member" | "update_tenant_member_role" | "remove_tenant_member" | "provision_user" | "change_user_template" | "reapply_user_template" | "sync_user" | "send_activation_email";
 
-export type AuditEntity = "user" | "role" | "client" | "client_role" | "session" | "template" | "iam_user";
+export type AuditEntity = "user" | "role" | "client" | "client_role" | "session" | "template" | "tenant" | "tenant_member" | "iam_user";
 
 export interface AuditEntry {
   actor: KeycloakTokenPayload;

@@ -19,8 +19,8 @@ const createProvisionedUserSchema = z.object({
   email: z.string().email("Email inválido.").optional().or(z.literal("")),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  /** Texto libre en esta fase. Se conectará al módulo de tenants en el futuro. */
-  tenant: z.string().optional(),
+  /** ID del grupo Keycloak (tenant) al que asignar el usuario al crearlo. */
+  tenantId: z.string().optional(),
   /** UUID de la plantilla de acceso a aplicar. */
   templateId: z.string().uuid("templateId debe ser un UUID válido.").optional(),
   enabled: z.boolean().optional().default(true),
@@ -71,7 +71,6 @@ router.post("/", requireAdmin, sensitiveLimiter, async (req, res, next) => {
     const result = await provisioningService.createAndProvisionUser(
       {
         ...parsed.data,
-        // Normalizar email vacío como undefined
         email: parsed.data.email?.trim() || undefined,
       },
       req.jwtPayload!

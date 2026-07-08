@@ -1,0 +1,254 @@
+import { eq } from "drizzle-orm";
+import { db } from "../db/client";
+import { tenants } from "../db/schema";
+import { kcAdmin, type KcGroup, type KcUser } from "./keycloak-admin.service";
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+/**
+ * Vista unificada de un tenant: datos de Keycloak (fuente de verdad)
+ * + metadatos extras almacenados en la DB.
+ */
+export interface TenantView {
+  id: string;       // KC group ID — identificador canónico
+  name: string;
+  path: string;
+  slug: string;     // Atributo "tenant_slug" del grupo KC
+  attributes: Record<string, string[]>;
+  // Metadatos DB
+  description: string | null;
+  active: boolean;
+  settings: Record<string, unknown> | null;
+  dbId: string | null;
+}
+
+export interface CreateTenantInput {
+  name: string;
+  slug?: string;
+  description?: string;
+  settings?: Record<string, unknown>;
+}
+
+export interface UpdateTenantInput {
+  name?: string;
+  description?: string;
+  active?: boolean;
+  settings?: Record<string, unknown>;
+}
+
+// ─── Utilidades ───────────────────────────────────────────────────────────────
+
+/** Convierte un nombre a slug válido (minúsculas, guiones). */
+export function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+/**
+ * Parsea los grupos del JWT para detectar si el usuario pertenece a algún tenant.
+ * El usuario pertenece al grupo top-level del tenant directamente (sin sub-roles).
+ *
+ * Ejemplo: ["/Tenant A"] → { tenantName: "Tenant A" }
+ */
+export function parseTenantFromGroups(
+  groups: string[]
+): { tenantName: string } | null {
+  for (const path of groups) {
+    const parts = path.split("/").filter(Boolean);
+    // Path de 1 nivel = pertenencia directa al grupo tenant
+    if (parts.length === 1) {
+      return { tenantName: parts[0] };
+    }
+  }
+  return null;
+}
+
+function buildTenantView(
+  group: KcGroup,
+  meta: { id: string; description: string | null; active: boolean; settings: Record<string, unknown> | null } | null
+): TenantView {
+  const attrs = group.attributes ?? {};
+  return {
+    id: group.id,
+    name: group.name,
+    path: group.path ?? `/${group.name}`,
+    slug: attrs["tenant_slug"]?.[0] ?? toSlug(group.name),
+    attributes: attrs,
+    description: meta?.description ?? null,
+    active: meta?.active ?? true,
+    settings: meta?.settings ?? null,
+    dbId: meta?.id ?? null,
+  };
+}
+
+// ─── Servicio ─────────────────────────────────────────────────────────────────
+
+class TenantService {
+
+  // ─── Listado ──────────────────────────────────────────────────────────────
+
+  async listTenants(): Promise<TenantView[]> {
+    const [kcGroups, dbRows] = await Promise.all([
+      kcAdmin.listGroups({ max: 500 }),
+      db.select().from(tenants),
+    ]);
+    const dbMap = new Map(dbRows.map((t) => [t.keycloakGroupId, t]));
+    return kcGroups.map((g) => buildTenantView(g, dbMap.get(g.id) ?? null));
+  }
+
+  // ─── Detalle ──────────────────────────────────────────────────────────────
+
+  async getTenant(kcGroupId: string): Promise<TenantView | null> {
+    let group: KcGroup;
+    try {
+      group = await kcAdmin.getGroup(kcGroupId);
+    } catch {
+      return null;
+    }
+    const [meta] = await db.select().from(tenants).where(eq(tenants.keycloakGroupId, kcGroupId));
+    return buildTenantView(group, meta ?? null);
+  }
+
+  // ─── Crear ────────────────────────────────────────────────────────────────
+
+  /**
+   * Crea el grupo en Keycloak (sin sub-roles) y persiste metadatos en DB.
+   */
+  async createTenant(input: CreateTenantInput): Promise<TenantView> {
+    const slug = input.slug?.trim() || toSlug(input.name);
+
+    const groupId = await kcAdmin.createGroup({
+      name: input.name.trim(),
+      attributes: {
+        tenant_slug: [slug],
+        tenant_display_name: [input.name.trim()],
+      },
+    });
+
+    if (!groupId) {
+      throw new Error("Keycloak no devolvió un ID de grupo válido.");
+    }
+
+    const [dbRow] = await db
+      .insert(tenants)
+      .values({
+        keycloakGroupId: groupId,
+        name: input.name.trim(),
+        slug,
+        description: input.description ?? null,
+        settings: input.settings ?? null,
+      })
+      .returning();
+
+    const group = await kcAdmin.getGroup(groupId);
+    return buildTenantView(group, dbRow);
+  }
+
+  // ─── Actualizar ───────────────────────────────────────────────────────────
+
+  async updateTenant(kcGroupId: string, input: UpdateTenantInput): Promise<TenantView | null> {
+    let group: KcGroup;
+    try {
+      group = await kcAdmin.getGroup(kcGroupId);
+    } catch {
+      return null;
+    }
+
+    if (input.name && input.name.trim() !== group.name) {
+      const currentSlug = group.attributes?.["tenant_slug"]?.[0] ?? toSlug(group.name);
+      await kcAdmin.updateGroup(kcGroupId, {
+        name: input.name.trim(),
+        attributes: {
+          tenant_slug: [currentSlug],
+          tenant_display_name: [input.name.trim()],
+        },
+      });
+      group = await kcAdmin.getGroup(kcGroupId);
+    }
+
+    const [existing] = await db.select().from(tenants).where(eq(tenants.keycloakGroupId, kcGroupId));
+    let meta: typeof existing;
+
+    if (existing) {
+      const [updated] = await db
+        .update(tenants)
+        .set({
+          ...(input.name && { name: input.name.trim() }),
+          ...(input.description !== undefined && { description: input.description }),
+          ...(input.active !== undefined && { active: input.active }),
+          ...(input.settings !== undefined && { settings: input.settings }),
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.keycloakGroupId, kcGroupId))
+        .returning();
+      meta = updated;
+    } else {
+      const [inserted] = await db
+        .insert(tenants)
+        .values({
+          keycloakGroupId: kcGroupId,
+          name: input.name?.trim() ?? group.name,
+          slug: group.attributes?.["tenant_slug"]?.[0] ?? toSlug(group.name),
+          description: input.description ?? null,
+          active: input.active ?? true,
+          settings: input.settings ?? null,
+        })
+        .returning();
+      meta = inserted;
+    }
+
+    return buildTenantView(group, meta);
+  }
+
+  // ─── Eliminar ─────────────────────────────────────────────────────────────
+
+  async deleteTenant(kcGroupId: string): Promise<boolean> {
+    try {
+      await kcAdmin.deleteGroup(kcGroupId);
+    } catch {
+      return false;
+    }
+    await db.delete(tenants).where(eq(tenants.keycloakGroupId, kcGroupId)).catch(() => {});
+    return true;
+  }
+
+  // ─── Miembros ─────────────────────────────────────────────────────────────
+
+  /** Devuelve los miembros directos del grupo tenant. */
+  async getTenantMembers(kcGroupId: string): Promise<KcUser[]> {
+    return kcAdmin.getGroupMembers(kcGroupId, { max: 500 });
+  }
+
+  /** Asigna un usuario al tenant (añade al grupo KC directamente). */
+  async addUserToTenant(kcGroupId: string, userId: string): Promise<void> {
+    await kcAdmin.addUserToGroup(userId, kcGroupId);
+  }
+
+  /** Mueve a un usuario de cualquier tenant actual al tenant destino. */
+  async moveUserToTenant(userId: string, targetTenantId: string): Promise<void> {
+    // Obtener todos los tenants para detectar de cuál hay que salir
+    const allGroups = await kcAdmin.listGroups({ max: 500 });
+    const userGroups = await kcAdmin.getUserGroups(userId);
+    const tenantGroupIds = new Set(allGroups.map((g) => g.id));
+
+    // Remover de cualquier tenant actual
+    await Promise.all(
+      userGroups
+        .filter((g) => g.id && tenantGroupIds.has(g.id) && g.id !== targetTenantId)
+        .map((g) => kcAdmin.removeUserFromGroup(userId, g.id!).catch(() => {}))
+    );
+
+    // Agregar al tenant destino
+    await kcAdmin.addUserToGroup(userId, targetTenantId);
+  }
+
+  /** Saca al usuario del tenant (elimina del grupo KC). */
+  async removeUserFromTenant(kcGroupId: string, userId: string): Promise<void> {
+    await kcAdmin.removeUserFromGroup(userId, kcGroupId).catch(() => {});
+  }
+}
+
+export const tenantService = new TenantService();

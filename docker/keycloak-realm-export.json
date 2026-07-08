@@ -47,6 +47,21 @@
         "phone",
         "offline_access",
         "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
       ]
     },
     {
@@ -84,6 +99,21 @@
         "phone",
         "offline_access",
         "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
       ]
     },
     {
@@ -145,6 +175,83 @@
       }
     ]
   },
+  "groups": [
+    {
+      "name": "Tenant A",
+      "path": "/Tenant A",
+      "attributes": {
+        "tenant_slug": ["tenant-a"],
+        "tenant_display_name": ["Tenant A"]
+      },
+      "subGroups": [
+        {
+          "name": "Administradores",
+          "path": "/Tenant A/Administradores",
+          "attributes": {}
+        },
+        {
+          "name": "Operadores",
+          "path": "/Tenant A/Operadores",
+          "attributes": {}
+        },
+        {
+          "name": "Supervisores",
+          "path": "/Tenant A/Supervisores",
+          "attributes": {}
+        }
+      ]
+    },
+    {
+      "name": "Tenant B",
+      "path": "/Tenant B",
+      "attributes": {
+        "tenant_slug": ["tenant-b"],
+        "tenant_display_name": ["Tenant B"]
+      },
+      "subGroups": [
+        {
+          "name": "Administradores",
+          "path": "/Tenant B/Administradores",
+          "attributes": {}
+        },
+        {
+          "name": "Operadores",
+          "path": "/Tenant B/Operadores",
+          "attributes": {}
+        },
+        {
+          "name": "Supervisores",
+          "path": "/Tenant B/Supervisores",
+          "attributes": {}
+        }
+      ]
+    },
+    {
+      "name": "Tenant C",
+      "path": "/Tenant C",
+      "attributes": {
+        "tenant_slug": ["tenant-c"],
+        "tenant_display_name": ["Tenant C"]
+      },
+      "subGroups": [
+        {
+          "name": "Administradores",
+          "path": "/Tenant C/Administradores",
+          "attributes": {}
+        },
+        {
+          "name": "Operadores",
+          "path": "/Tenant C/Operadores",
+          "attributes": {}
+        },
+        {
+          "name": "Supervisores",
+          "path": "/Tenant C/Supervisores",
+          "attributes": {}
+        }
+      ]
+    }
+  ],
   "users": [
     {
       "username": "admin@optrax.com",
@@ -164,7 +271,8 @@
       "realmRoles": [
         "auth-manager-admin",
         "SUPER_ADMIN"
-      ]
+      ],
+      "groups": []
     },
     {
       "username": "usuario@optrax.com",
@@ -183,7 +291,8 @@
       "clientRoles": {},
       "realmRoles": [
         "auth-manager-viewer"
-      ]
+      ],
+      "groups": []
     },
     {
       "username": "service-account-auth-manager-sa",
@@ -203,7 +312,62 @@
           "manage-realm",
           "manage-roles"
         ]
-      }
+      },
+      "groups": []
+    },
+    {
+      "username": "admin.tenanta@optrax.com",
+      "email": "admin.tenanta@optrax.com",
+      "firstName": "Admin",
+      "lastName": "Tenant A",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "tenant123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {},
+      "realmRoles": ["TENANT_ADMIN"],
+      "groups": ["/Tenant A/Administradores"]
+    },
+    {
+      "username": "operador.tenanta@optrax.com",
+      "email": "operador.tenanta@optrax.com",
+      "firstName": "Operador",
+      "lastName": "Tenant A",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "tenant123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {},
+      "realmRoles": [],
+      "groups": ["/Tenant A/Operadores"]
+    },
+    {
+      "username": "supervisor.tenantb@optrax.com",
+      "email": "supervisor.tenantb@optrax.com",
+      "firstName": "Supervisor",
+      "lastName": "Tenant B",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "tenant123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {},
+      "realmRoles": [],
+      "groups": ["/Tenant B/Supervisores"]
     }
   ]
 }

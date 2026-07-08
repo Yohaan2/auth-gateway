@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import type { Request, Response, NextFunction } from "express";
 import { env } from "../config/env";
+import { parseTenantFromGroups } from "../services/tenant.service";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,12 @@ export interface KeycloakTokenPayload extends JWTPayload {
   realm_access?: { roles: string[] };
   resource_access?: Record<string, { roles: string[] }>;
   azp?: string;
+  /**
+   * Rutas completas de los grupos a los que pertenece el usuario.
+   * Ejemplo: ["/Tenant A/Operadores"]
+   * Requiere el mapper "groups" (oidc-group-membership-mapper) en el cliente Keycloak.
+   */
+  groups?: string[];
 }
 
 declare global {
@@ -76,3 +83,35 @@ export function requireRole(...roles: string[]) {
 // Helpers de roles del panel
 export const requireAdmin = requireRole(env.KEYCLOAK_ADMIN_ROLE);
 export const requireAdminOrViewer = requireRole(env.KEYCLOAK_ADMIN_ROLE, env.KEYCLOAK_VIEWER_ROLE);
+
+// ─── Guard de tenant ─────────────────────────────────────────────────────────
+
+/**
+ * Verifica que el usuario pertenezca a algún tenant.
+ * No requiere un rol específico — solo membresía directa en el grupo.
+ */
+export function requireTenantAccess() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const groups = req.jwtPayload?.groups ?? [];
+    const context = parseTenantFromGroups(groups);
+
+    if (!context) {
+      return res.status(403).json({
+        error: "Acceso denegado",
+        message: "El usuario no pertenece a ningún tenant.",
+      });
+    }
+
+    next();
+  };
+}
+
+/**
+ * Inyecta en `req` el contexto de tenant del usuario extraído de los grupos del JWT.
+ * No bloquea si el usuario no tiene tenant asignado.
+ */
+export function injectTenantContext(req: Request, _res: Response, next: NextFunction) {
+  const groups = req.jwtPayload?.groups ?? [];
+  (req as any).tenantContext = parseTenantFromGroups(groups);
+  next();
+}

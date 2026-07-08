@@ -17,8 +17,8 @@ export interface CreateProvisionedUserInput {
   email?: string;
   firstName?: string;
   lastName?: string;
-  /** Texto libre en esta fase. Se conectará al módulo de tenants en el futuro. */
-  tenant?: string;
+  /** ID del grupo Keycloak (tenant) al que asignar el usuario al crearlo. */
+  tenantId?: string;
   /** UUID de la plantilla de acceso a aplicar. Opcional. */
   templateId?: string;
   enabled?: boolean;
@@ -80,13 +80,15 @@ class ProvisioningService {
     let templateApplied = false;
 
     try {
-      // ── 2. Aplicar la plantilla (si se proporcionó) ───────────────────────
+      // ── 2. Asignar al tenant (si se proporcionó el KC group ID) ──────────
+      if (input.tenantId) {
+        await kcAdmin.addUserToGroup(keycloakId, input.tenantId);
+      }
+
+      // ── 3. Aplicar la plantilla (si se proporcionó) ───────────────────────
       if (input.templateId) {
-        await this.applyTemplateToUser(keycloakId, input.templateId, input.tenant);
+        await this.applyTemplateToUser(keycloakId, input.templateId, undefined);
         templateApplied = true;
-      } else if (input.tenant) {
-        // Aunque no haya plantilla, registrar el tenant como atributo en Keycloak
-        await kcAdmin.updateUserAttributes(keycloakId, { tenant: [input.tenant] });
       }
     } catch (err) {
       // ── Rollback: eliminar el usuario de Keycloak si falla el aprovisionamiento
@@ -121,7 +123,7 @@ class ProvisioningService {
         email: input.email,
         firstName: input.firstName,
         lastName: input.lastName,
-        tenant: input.tenant,
+        tenant: input.tenantId ?? null,
         templateId: input.templateId ?? null,
         enabled: input.enabled ?? true,
       })
@@ -136,7 +138,7 @@ class ProvisioningService {
       detail: {
         username: input.username,
         email: input.email,
-        tenant: input.tenant,
+        tenantId: input.tenantId,
         templateId: input.templateId,
         templateApplied,
         activationEmailSent,
