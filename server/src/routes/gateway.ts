@@ -54,6 +54,12 @@ function decodePayload(token: string): Record<string, unknown> {
   }
 }
 
+const ignoredRoles = [
+  "default-roles-optrax-realm",
+  "offline_access",
+  "uma_authorization",
+];
+
 // ─── POST /api/gateway/login ─────────────────────────────────────────────────
 
 router.post("/login", sensitiveLimiter, async (req, res, next) => {
@@ -119,14 +125,7 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
     const clientRoles: string[] = resourceAccess[clientId]?.roles ?? [];
     const realmRoles: string[] = (payload.realm_access as any)?.roles ?? [];
 
-    // Todos los módulos (clients) a los que el usuario tiene acceso con sus roles
-    const internalClients = new Set(["account", "account-console", "broker", "realm-management", "security-admin-console"]);
-    const modules: Record<string, string[]> = {};
-    for (const [cid, val] of Object.entries(resourceAccess)) {
-      if (!internalClients.has(cid) && val.roles?.length) {
-        modules[cid] = val.roles;
-      }
-    }
+    const businessRoles = realmRoles.filter((role) => !ignoredRoles.includes(role));
 
     res.json({
       access_token: kcResponse.access_token,
@@ -134,13 +133,12 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
       expires_in: kcResponse.expires_in,
       token_type: "Bearer",
       user: {
-        sub: payload.sub,
+        id: payload.sub,
         username: payload.preferred_username,
         email: payload.email,
         name: payload.name,
         roles: clientRoles,  // roles del módulo que hizo login
-        realmRoles,          // roles globales del realm
-        modules,             // todos los módulos con sus roles
+        realmRoles: businessRoles,
       },
     });
   } catch (err) {

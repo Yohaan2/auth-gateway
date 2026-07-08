@@ -3,7 +3,6 @@ import { db } from "../db/client";
 import {
   accessTemplates,
   templateRoles,
-  templateGroups,
   templateClaims,
   templatePermissions,
 } from "../db/schema";
@@ -64,14 +63,13 @@ class TemplatesService {
 
     if (!template) return null;
 
-    const [roles, groups, claims, permissions] = await Promise.all([
+    const [roles, claims, permissions] = await Promise.all([
       db.select().from(templateRoles).where(eq(templateRoles.templateId, id)),
-      db.select().from(templateGroups).where(eq(templateGroups.templateId, id)),
       db.select().from(templateClaims).where(eq(templateClaims.templateId, id)),
       db.select().from(templatePermissions).where(eq(templatePermissions.templateId, id)),
     ]);
 
-    return { ...template, roles, groups, claims, permissions };
+    return { ...template, roles, claims, permissions };
   }
 
   /** Crea una plantilla junto con sus roles/grupos/claims/permisos iniciales. */
@@ -142,19 +140,6 @@ class TemplatesService {
             roleId: r.roleId,
             isClientRole: r.isClientRole ?? false,
             clientId: r.clientId,
-          }))
-        );
-      }
-    }
-
-    if (input.groups !== undefined) {
-      await tx.delete(templateGroups).where(eq(templateGroups.templateId, templateId));
-      if (input.groups.length > 0) {
-        await tx.insert(templateGroups).values(
-          input.groups.map((g) => ({
-            templateId,
-            groupId: g.groupId,
-            groupPath: g.groupPath,
           }))
         );
       }

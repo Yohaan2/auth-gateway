@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, User, Shield, Mail, ChevronDown, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, User, Shield, Mail, ChevronDown, Loader2, CheckCircle2 } from "lucide-react";
 import { usersApi, templatesApi, type AccessTemplate } from "../../api/admin-api";
 import toast from "react-hot-toast";
 

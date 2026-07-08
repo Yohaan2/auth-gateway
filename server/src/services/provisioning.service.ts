@@ -4,7 +4,6 @@ import {
   iamUsers,
   accessTemplates,
   templateRoles,
-  templateGroups,
   templateClaims,
 } from "../db/schema";
 import { kcAdmin } from "./keycloak-admin.service";
@@ -301,16 +300,10 @@ class ProvisioningService {
     tenant?: string
   ): Promise<void> {
     // Cargar todos los elementos de la plantilla en paralelo
-    const [groups, roles, claims] = await Promise.all([
-      db.select().from(templateGroups).where(eq(templateGroups.templateId, templateId)),
+    const [roles, claims] = await Promise.all([
       db.select().from(templateRoles).where(eq(templateRoles.templateId, templateId)),
       db.select().from(templateClaims).where(eq(templateClaims.templateId, templateId)),
     ]);
-
-    // ── Asignar grupos de la plantilla ────────────────────────────────────────
-    for (const group of groups) {
-      await kcAdmin.addUserToGroup(keycloakId, group.groupId);
-    }
 
     // ── Si hay tenant, intentar agregar al grupo de tenant en Keycloak ────────
     // Soft-fail: si el grupo no existe, se omite (no lanza error).
@@ -394,19 +387,9 @@ class ProvisioningService {
    * Soft-fail: los errores se logean pero no interrumpen el flujo.
    */
   private async removeTemplateFromUser(keycloakId: string, templateId: string): Promise<void> {
-    const [groups, roles] = await Promise.all([
-      db.select().from(templateGroups).where(eq(templateGroups.templateId, templateId)),
+    const [roles] = await Promise.all([
       db.select().from(templateRoles).where(eq(templateRoles.templateId, templateId)),
     ]);
-
-    // Remover grupos
-    for (const group of groups) {
-      try {
-        await kcAdmin.removeUserFromGroup(keycloakId, group.groupId);
-      } catch (err) {
-        console.warn(`⚠️  No se pudo remover al usuario del grupo ${group.groupId}:`, err);
-      }
-    }
 
     // Remover roles de realm
     const realmRoles = roles.filter((r) => !r.isClientRole);
