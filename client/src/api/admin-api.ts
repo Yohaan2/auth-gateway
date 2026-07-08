@@ -305,8 +305,8 @@ export interface CreateProvisionedUserPayload {
   email?: string;
   firstName?: string;
   lastName?: string;
-  /** Texto libre en esta fase. Se sustituirá por un selector de tenants en el futuro. */
-  tenant?: string;
+  /** ID del grupo Keycloak (tenant) al que asignar el usuario. */
+  tenantId?: string;
   /** UUID de la plantilla de acceso a aplicar al usuario. */
   templateId?: string;
   enabled?: boolean;
@@ -363,18 +363,11 @@ export const templatesApi = {
 
 // ─── Tenants (Grupos de Keycloak) — Fase 4 ───────────────────────────────────
 
-export interface TenantSubGroup {
-  id: string;
-  name: string;
-  path?: string;
-}
-
 export interface TenantView {
-  id: string;           // KC group ID — identificador canónico
+  id: string;
   name: string;
   path: string;
   slug: string;
-  subGroups: TenantSubGroup[];
   attributes: Record<string, string[]>;
   description: string | null;
   active: boolean;
@@ -382,9 +375,7 @@ export interface TenantView {
   dbId: string | null;
 }
 
-export interface TenantMember extends KcUser {
-  tenantRole: string;
-}
+export type TenantMember = KcUser;
 
 export const tenantsApi = {
   list: () =>
@@ -405,19 +396,16 @@ export const tenantsApi = {
       .get<{ members: TenantMember[]; total: number }>(`/tenants/${id}/members`)
       .then((r) => r.data),
 
-  addMember: (id: string, userId: string, role: string) =>
-    api.post<{ message: string }>(`/tenants/${id}/members`, { userId, role }).then((r) => r.data),
+  addMember: (id: string, userId: string) =>
+    api.post<{ message: string }>(`/tenants/${id}/members`, { userId }).then((r) => r.data),
 
-  updateMemberRole: (id: string, userId: string, role: string) =>
+  moveMember: (fromTenantId: string, userId: string, targetTenantId: string) =>
     api
-      .put<{ message: string }>(`/tenants/${id}/members/${userId}/role`, { role })
+      .put<{ message: string }>(`/tenants/${fromTenantId}/members/${userId}/move`, { targetTenantId })
       .then((r) => r.data),
 
   removeMember: (id: string, userId: string) =>
     api.delete<{ message: string }>(`/tenants/${id}/members/${userId}`).then((r) => r.data),
-
-  availableRoles: () =>
-    api.get<{ roles: string[] }>("/tenants/roles/available").then((r) => r.data),
 };
 
 // ─── IAM — Fase 1 (roles administrativos + RBAC) ────────────────────────────

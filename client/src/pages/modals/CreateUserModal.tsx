@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, User, Shield, Mail, ChevronDown, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
-import { usersApi, templatesApi, type AccessTemplate } from "../../api/admin-api";
+import { X, User, Shield, Mail, ChevronDown, Loader2, CheckCircle2, Building2 } from "lucide-react";
+import { usersApi, templatesApi, tenantsApi, type AccessTemplate, type TenantView } from "../../api/admin-api";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -14,8 +14,7 @@ const INITIAL_FORM = {
   lastName: "",
   email: "",
   username: "",
-  // Tenant: texto libre en esta fase. TODO: reemplazar con selector de tenants
-  tenant: "",
+  tenantId: "",
   templateId: "",
   enabled: true,
   sendActivationEmail: false,
@@ -57,11 +56,16 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  // Cargar plantillas disponibles
   const { data: templates = [], isLoading: loadingTemplates } = useQuery({
     queryKey: ["access-templates"],
     queryFn: templatesApi.list,
   });
+
+  const { data: tenantsData, isLoading: loadingTenants } = useQuery({
+    queryKey: ["tenants"],
+    queryFn: tenantsApi.list,
+  });
+  const availableTenants: TenantView[] = tenantsData?.tenants ?? [];
 
   const activeTemplates = templates.filter((t: AccessTemplate) => t.active);
   const selectedTemplate = activeTemplates.find((t: AccessTemplate) => t.id === form.templateId);
@@ -85,7 +89,7 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
         email: form.email.trim(),
         firstName: form.firstName.trim() || undefined,
         lastName: form.lastName.trim() || undefined,
-        tenant: form.tenant.trim() || undefined,
+        tenantId: form.tenantId || undefined,
         templateId: form.templateId || undefined,
         enabled: form.enabled,
         sendActivationEmail: form.sendActivationEmail,
@@ -210,24 +214,44 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
 
               <div className="space-y-3">
                 {/* Tenant */}
-                <InputField label="Tenant" id="tenant">
+                <InputField label="Tenant" id="tenantId">
                   <div className="relative">
-                    <input
-                      id="tenant"
-                      type="text"
-                      value={form.tenant}
-                      onChange={(e) => set("tenant", e.target.value)}
-                      className={`${inputClass} pr-24`}
-                      placeholder="Pendiente de configuración"
-                      disabled
+                    <Building2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <select
+                      id="tenantId"
+                      value={form.tenantId}
+                      onChange={(e) => set("tenantId", e.target.value)}
+                      className={`${inputClass} appearance-none pl-8 pr-8`}
+                      disabled={loadingTenants}
+                    >
+                      <option value="">
+                        {loadingTenants ? "Cargando tenants..." : "Sin tenant (acceso global)"}
+                      </option>
+                      {availableTenants.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                          {t.description ? ` — ${t.description}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                      Próximamente
-                    </span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    El módulo de tenants se habilitará en una fase posterior.
-                  </p>
+                  {form.tenantId && (
+                    <div className="mt-2 p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center gap-2">
+                      <Building2 size={13} className="text-indigo-500 flex-shrink-0" />
+                      <p className="text-xs text-indigo-700 font-medium">
+                        {availableTenants.find((t) => t.id === form.tenantId)?.name ?? form.tenantId}
+                      </p>
+                    </div>
+                  )}
+                  {!form.tenantId && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Sin tenant: el usuario se crea sin asignación de organización.
+                    </p>
+                  )}
                 </InputField>
 
                 {/* Plantilla de acceso */}

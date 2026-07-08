@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import type { Request, Response, NextFunction } from "express";
 import { env } from "../config/env";
-import { parseTenantFromGroups, type TenantRole } from "../services/tenant.service";
+import { parseTenantFromGroups } from "../services/tenant.service";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -87,13 +87,10 @@ export const requireAdminOrViewer = requireRole(env.KEYCLOAK_ADMIN_ROLE, env.KEY
 // ─── Guard de tenant ─────────────────────────────────────────────────────────
 
 /**
- * Verifica que el usuario pertenezca a un sub-grupo de tenant válido.
- * Si se especifican roles, solo los usuarios con esos roles dentro del
- * tenant pueden continuar.
- *
- * Ejemplo:  requireTenantRole("Administradores", "Supervisores")
+ * Verifica que el usuario pertenezca a algún tenant.
+ * No requiere un rol específico — solo membresía directa en el grupo.
  */
-export function requireTenantRole(...roles: TenantRole[]) {
+export function requireTenantAccess() {
   return (req: Request, res: Response, next: NextFunction) => {
     const groups = req.jwtPayload?.groups ?? [];
     const context = parseTenantFromGroups(groups);
@@ -105,20 +102,13 @@ export function requireTenantRole(...roles: TenantRole[]) {
       });
     }
 
-    if (roles.length > 0 && !roles.includes(context.role)) {
-      return res.status(403).json({
-        error: "Acceso denegado",
-        message: `Se requiere uno de los roles de tenant: ${roles.join(", ")}.`,
-      });
-    }
-
     next();
   };
 }
 
 /**
- * Inyecta en `req` el contexto de tenant del usuario (tenantName + role)
- * extraído de los grupos del JWT. No bloquea si el usuario no tiene tenant.
+ * Inyecta en `req` el contexto de tenant del usuario extraído de los grupos del JWT.
+ * No bloquea si el usuario no tiene tenant asignado.
  */
 export function injectTenantContext(req: Request, _res: Response, next: NextFunction) {
   const groups = req.jwtPayload?.groups ?? [];

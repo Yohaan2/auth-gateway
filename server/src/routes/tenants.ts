@@ -2,37 +2,15 @@ import { Router } from "express";
 import { requireJwt } from "../middleware/jwt-auth";
 import { Permissions } from "../common/decorators/roles.decorator";
 import { IAM_PERMISSIONS } from "../config/iam-roles";
-import {
-  tenantService,
-  TENANT_DEFAULT_ROLES,
-  type TenantRole,
-  toSlug,
-} from "../services/tenant.service";
+import { tenantService, toSlug } from "../services/tenant.service";
 import { logAudit } from "../audit/audit.service";
 import { sensitiveLimiter } from "../middleware/rate-limiter";
 
 const router = Router();
 router.use(requireJwt);
 
-// ─── Roles disponibles ────────────────────────────────────────────────────────
-// IMPORTANTE: este endpoint debe ir ANTES de /:id para que Express no lo trate
-// como un parámetro dinámico.
-
-/**
- * GET /api/admin/tenants/roles/available
- */
-router.get("/roles/available", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), (_req, res) => {
-  res.json({ roles: TENANT_DEFAULT_ROLES });
-});
-
 // ─── Listar tenants ───────────────────────────────────────────────────────────
 
-/**
- * GET /api/admin/tenants
- *
- * Fuente de verdad: grupos top-level de Keycloak.
- * Enriquece cada grupo con metadatos de la DB local si existen.
- */
 router.get("/", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (_req, res, next) => {
   try {
     const list = await tenantService.listTenants();
@@ -44,13 +22,6 @@ router.get("/", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (_req, res, n
 
 // ─── Crear tenant ─────────────────────────────────────────────────────────────
 
-/**
- * POST /api/admin/tenants
- * Body: { name, slug?, description?, settings? }
- *
- * Crea el grupo en Keycloak (con sub-grupos Administradores / Operadores /
- * Supervisores) y guarda metadatos en la DB.
- */
 router.post(
   "/",
   Permissions(IAM_PERMISSIONS.MANAGE_TENANTS),
@@ -79,7 +50,7 @@ router.post(
         actor: req.jwtPayload!,
         action: "create_tenant",
         entity: "tenant",
-        entityId: tenant.id,       // KC group ID
+        entityId: tenant.id,
         detail: { name: tenant.name, slug: tenant.slug },
       });
 
@@ -92,11 +63,6 @@ router.post(
 
 // ─── Detalle de tenant ────────────────────────────────────────────────────────
 
-/**
- * GET /api/admin/tenants/:kcGroupId
- *
- * :kcGroupId = ID del grupo en Keycloak (UUID de KC).
- */
 router.get("/:kcGroupId", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (req, res, next) => {
   try {
     const tenant = await tenantService.getTenant(req.params.kcGroupId);
@@ -111,13 +77,6 @@ router.get("/:kcGroupId", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (re
 
 // ─── Actualizar tenant ────────────────────────────────────────────────────────
 
-/**
- * PUT /api/admin/tenants/:kcGroupId
- * Body: { name?, description?, active?, settings? }
- *
- * Actualiza el grupo en Keycloak y los metadatos en la DB.
- * Si no existía registro en DB, lo crea (upsert).
- */
 router.put("/:kcGroupId", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (req, res, next) => {
   try {
     const { name, description, active, settings } = req.body;
@@ -149,12 +108,6 @@ router.put("/:kcGroupId", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (re
 
 // ─── Eliminar tenant ──────────────────────────────────────────────────────────
 
-/**
- * DELETE /api/admin/tenants/:kcGroupId
- *
- * Elimina el grupo de Keycloak (sub-grupos y membresías en cascada)
- * y el registro de metadatos de la DB.
- */
 router.delete(
   "/:kcGroupId",
   Permissions(IAM_PERMISSIONS.MANAGE_TENANTS),
@@ -184,9 +137,7 @@ router.delete(
 
 /**
  * GET /api/admin/tenants/:kcGroupId/members
- *
- * Devuelve todos los usuarios de los sub-grupos del tenant
- * con su rol dentro de él (Administradores / Operadores / Supervisores).
+ * Devuelve los miembros directos del grupo tenant.
  */
 router.get(
   "/:kcGroupId/members",
@@ -203,38 +154,31 @@ router.get(
 
 /**
  * POST /api/admin/tenants/:kcGroupId/members
- * Body: { userId, role: "Administradores" | "Operadores" | "Supervisores" }
- *
- * Asigna un usuario al tenant con el rol indicado.
- * Si ya estaba en otro sub-grupo del mismo tenant, lo mueve.
+ * Body: { userId }
+ * Agrega un usuario al tenant directamente (sin rol).
  */
 router.post(
   "/:kcGroupId/members",
   Permissions(IAM_PERMISSIONS.MANAGE_TENANTS),
   async (req, res, next) => {
     try {
-      const { userId, role } = req.body as { userId?: string; role?: string };
+      const { userId } = req.body as { userId?: string };
 
       if (!userId) {
         return res.status(400).json({ error: "El campo 'userId' es obligatorio." });
       }
-      if (!role || !(TENANT_DEFAULT_ROLES as readonly string[]).includes(role)) {
-        return res.status(400).json({
-          error: `'role' debe ser uno de: ${TENANT_DEFAULT_ROLES.join(", ")}.`,
-        });
-      }
 
-      await tenantService.addUserToTenant(req.params.kcGroupId, userId, role as TenantRole);
+      await tenantService.addUserToTenant(req.params.kcGroupId, userId);
 
       await logAudit({
         actor: req.jwtPayload!,
         action: "add_tenant_member",
         entity: "tenant_member",
         entityId: req.params.kcGroupId,
-        detail: { userId, role },
+        detail: { userId },
       });
 
-      res.status(201).json({ message: `Usuario agregado al tenant como ${role}.` });
+      res.status(201).json({ message: "Usuario agregado al tenant." });
     } catch (err) {
       next(err);
     }
@@ -242,39 +186,35 @@ router.post(
 );
 
 /**
- * PUT /api/admin/tenants/:kcGroupId/members/:userId/role
- * Body: { role: "Administradores" | "Operadores" | "Supervisores" }
- *
- * Mueve al usuario a un sub-grupo diferente dentro del mismo tenant.
+ * PUT /api/admin/tenants/:kcGroupId/members/:userId/move
+ * Body: { targetTenantId }
+ * Mueve al usuario a otro tenant (lo saca del actual y lo mete en el destino).
  */
 router.put(
-  "/:kcGroupId/members/:userId/role",
+  "/:kcGroupId/members/:userId/move",
   Permissions(IAM_PERMISSIONS.MANAGE_TENANTS),
   async (req, res, next) => {
     try {
-      const { role } = req.body as { role?: string };
+      const { targetTenantId } = req.body as { targetTenantId?: string };
 
-      if (!role || !(TENANT_DEFAULT_ROLES as readonly string[]).includes(role)) {
-        return res.status(400).json({
-          error: `'role' debe ser uno de: ${TENANT_DEFAULT_ROLES.join(", ")}.`,
-        });
+      if (!targetTenantId) {
+        return res.status(400).json({ error: "El campo 'targetTenantId' es obligatorio." });
+      }
+      if (targetTenantId === req.params.kcGroupId) {
+        return res.status(400).json({ error: "El usuario ya pertenece a ese tenant." });
       }
 
-      await tenantService.updateUserTenantRole(
-        req.params.kcGroupId,
-        req.params.userId,
-        role as TenantRole
-      );
+      await tenantService.moveUserToTenant(req.params.userId, targetTenantId);
 
       await logAudit({
         actor: req.jwtPayload!,
         action: "update_tenant_member_role",
         entity: "tenant_member",
-        entityId: req.params.kcGroupId,
-        detail: { userId: req.params.userId, newRole: role },
+        entityId: targetTenantId,
+        detail: { userId: req.params.userId, fromTenant: req.params.kcGroupId },
       });
 
-      res.json({ message: `Rol actualizado a ${role}.` });
+      res.json({ message: "Usuario movido al nuevo tenant." });
     } catch (err) {
       next(err);
     }
@@ -283,8 +223,7 @@ router.put(
 
 /**
  * DELETE /api/admin/tenants/:kcGroupId/members/:userId
- *
- * Saca al usuario de todos los sub-grupos del tenant.
+ * Saca al usuario del tenant.
  */
 router.delete(
   "/:kcGroupId/members/:userId",

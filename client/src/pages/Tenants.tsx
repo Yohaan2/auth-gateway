@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Pencil,
@@ -9,6 +9,7 @@ import {
   ChevronUp,
   UserPlus,
   UserMinus,
+  ArrowRightLeft,
   Building2,
   Search,
   X,
@@ -19,17 +20,6 @@ import toast from "react-hot-toast";
 import { tenantsApi, usersApi, type TenantView, type TenantMember, type KcUser } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useRoles } from "../auth/useRoles";
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
-
-const TENANT_ROLES = ["Administradores", "Operadores", "Supervisores"] as const;
-type TenantRole = (typeof TENANT_ROLES)[number];
-
-const ROLE_COLORS: Record<TenantRole, string> = {
-  Administradores: "bg-purple-100 text-purple-700",
-  Operadores: "bg-blue-100 text-blue-700",
-  Supervisores: "bg-amber-100 text-amber-700",
-};
 
 // ─── Modal: Crear / Editar Tenant ────────────────────────────────────────────
 
@@ -56,7 +46,7 @@ function TenantFormModal({
         toast.success("Tenant actualizado.");
       } else {
         await tenantsApi.create({ name: name.trim(), description: description.trim() });
-        toast.success("Tenant creado con sus 3 sub-grupos.");
+        toast.success("Tenant creado.");
       }
       onSaved();
       onClose();
@@ -77,12 +67,9 @@ function TenantFormModal({
         <h2 className="text-base font-semibold text-gray-900 mb-1">
           {initial ? "Editar tenant" : "Nuevo tenant"}
         </h2>
-        {!initial && (
-          <p className="text-xs text-gray-500 mb-4">
-            Se creará un grupo en Keycloak con los sub-grupos{" "}
-            <span className="font-medium">Administradores, Operadores y Supervisores</span>.
-          </p>
-        )}
+        <p className="text-xs text-gray-500 mb-4">
+          Los usuarios se asignan directamente al grupo del tenant, sin sub-roles.
+        </p>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Nombre *</label>
@@ -92,6 +79,7 @@ function TenantFormModal({
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="Empresa o cliente..."
+              autoFocus
             />
           </div>
           <div>
@@ -136,7 +124,6 @@ function AddMemberModal({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<KcUser | null>(null);
-  const [selectedRole, setSelectedRole] = useState<TenantRole>("Operadores");
   const [loading, setLoading] = useState(false);
 
   const handleSearch = (v: string) => {
@@ -148,7 +135,6 @@ function AddMemberModal({
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ["users-search-modal", debouncedSearch],
     queryFn: () => usersApi.list({ search: debouncedSearch || undefined, max: 10 }),
-    enabled: debouncedSearch.length >= 1 || true,
   });
 
   const availableUsers = (usersData?.users ?? []).filter((u) => !existingMemberIds.has(u.id));
@@ -157,8 +143,8 @@ function AddMemberModal({
     if (!selectedUser) { toast.error("Selecciona un usuario."); return; }
     setLoading(true);
     try {
-      await tenantsApi.addMember(tenantId, selectedUser.id, selectedRole);
-      toast.success(`${selectedUser.username} agregado como ${selectedRole}.`);
+      await tenantsApi.addMember(tenantId, selectedUser.id);
+      toast.success(`${selectedUser.username} agregado al tenant.`);
       onAdded();
       onClose();
     } catch (err: any) {
@@ -179,7 +165,6 @@ function AddMemberModal({
         <p className="text-xs text-gray-500 mb-4">Tenant: <span className="font-medium">{tenantName}</span></p>
 
         <div className="space-y-4">
-          {/* Buscador de usuarios */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Buscar usuario</label>
             <div className="relative">
@@ -195,8 +180,7 @@ function AddMemberModal({
             </div>
           </div>
 
-          {/* Lista de usuarios */}
-          <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
+          <div className="max-h-52 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
             {usersLoading ? (
               <p className="p-3 text-xs text-gray-400 text-center">Buscando...</p>
             ) : availableUsers.length === 0 ? (
@@ -217,39 +201,18 @@ function AddMemberModal({
                   <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {(u.firstName || u.username || "?").charAt(0).toUpperCase()}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-800 truncate">
                       {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username}
                     </p>
                     <p className="text-xs text-gray-400 truncate">{u.email ?? u.username}</p>
                   </div>
                   {selectedUser?.id === u.id && (
-                    <CheckCircle2 size={16} className="text-indigo-500 flex-shrink-0 ml-auto" />
+                    <CheckCircle2 size={16} className="text-indigo-500 flex-shrink-0" />
                   )}
                 </button>
               ))
             )}
-          </div>
-
-          {/* Rol dentro del tenant */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Rol en el tenant</label>
-            <div className="flex gap-2">
-              {TENANT_ROLES.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setSelectedRole(role)}
-                  className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${
-                    selectedRole === role
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
@@ -271,41 +234,133 @@ function AddMemberModal({
   );
 }
 
-// ─── Fila de miembro ──────────────────────────────────────────────────────────
+// ─── Modal: Mover usuario a otro tenant ──────────────────────────────────────
 
-function MemberRow({
+function MoveTenantModal({
   member,
-  tenantId,
-  isAdmin,
-  onChanged,
+  currentTenantId,
+  allTenants,
+  onClose,
+  onMoved,
 }: {
   member: TenantMember;
-  tenantId: string;
-  isAdmin: boolean;
-  onChanged: () => void;
+  currentTenantId: string;
+  allTenants: TenantView[];
+  onClose: () => void;
+  onMoved: () => void;
 }) {
-  const [showRemove, setShowRemove] = useState(false);
-  const [roleLoading, setRoleLoading] = useState(false);
-  const qc = useQueryClient();
+  const [targetTenantId, setTargetTenantId] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const displayName =
     member.firstName && member.lastName
       ? `${member.firstName} ${member.lastName}`
       : member.username;
 
-  const handleRoleChange = async (newRole: string) => {
-    if (newRole === member.tenantRole) return;
-    setRoleLoading(true);
+  const otherTenants = allTenants.filter((t) => t.id !== currentTenantId);
+
+  const handleMove = async () => {
+    if (!targetTenantId) { toast.error("Selecciona un tenant destino."); return; }
+    setLoading(true);
     try {
-      await tenantsApi.updateMemberRole(tenantId, member.id, newRole);
-      toast.success(`Rol cambiado a ${newRole}.`);
-      onChanged();
+      await tenantsApi.moveMember(currentTenantId, member.id, targetTenantId);
+      const targetName = allTenants.find((t) => t.id === targetTenantId)?.name ?? targetTenantId;
+      toast.success(`${displayName} movido a "${targetName}".`);
+      onMoved();
+      onClose();
     } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? "Error al cambiar rol.");
+      toast.error(err?.response?.data?.error ?? "Error al mover el usuario.");
     } finally {
-      setRoleLoading(false);
+      setLoading(false);
     }
   };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+          <X size={18} />
+        </button>
+        <div className="flex items-center gap-2 mb-1">
+          <ArrowRightLeft size={16} className="text-indigo-500" />
+          <h2 className="text-base font-semibold text-gray-900">Cambiar de tenant</h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Usuario: <span className="font-medium">{displayName}</span>
+        </p>
+
+        {otherTenants.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-4">No hay otros tenants disponibles.</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {otherTenants.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTargetTenantId(t.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                  targetTenantId === t.id
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
+                }`}
+              >
+                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                  <Building2 size={13} className="text-indigo-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-800">{t.name}</p>
+                  <p className="text-xs text-gray-400 font-mono">{t.slug}</p>
+                </div>
+                {targetTenantId === t.id && (
+                  <CheckCircle2 size={16} className="text-indigo-500 flex-shrink-0" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+            Cancelar
+          </button>
+          {otherTenants.length > 0 && (
+            <button
+              onClick={handleMove}
+              disabled={!targetTenantId || loading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              <ArrowRightLeft size={14} />
+              {loading ? "Moviendo..." : "Mover"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Fila de miembro ──────────────────────────────────────────────────────────
+
+function MemberRow({
+  member,
+  tenantId,
+  allTenants,
+  isAdmin,
+  onChanged,
+}: {
+  member: TenantMember;
+  tenantId: string;
+  allTenants: TenantView[];
+  isAdmin: boolean;
+  onChanged: () => void;
+}) {
+  const [showRemove, setShowRemove] = useState(false);
+  const [showMove, setShowMove] = useState(false);
+
+  const displayName =
+    member.firstName && member.lastName
+      ? `${member.firstName} ${member.lastName}`
+      : member.username;
 
   const handleRemove = async () => {
     try {
@@ -333,11 +388,6 @@ function MemberRow({
           </div>
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[member.tenantRole as TenantRole] ?? "bg-gray-100 text-gray-700"}`}>
-            {member.tenantRole}
-          </span>
-        </td>
-        <td className="px-4 py-3">
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${member.enabled ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
             {member.enabled ? <CheckCircle2 size={11} /> : <XCircle size={11} />}
             {member.enabled ? "Activo" : "Deshabilitado"}
@@ -346,16 +396,14 @@ function MemberRow({
         <td className="px-4 py-3 text-right">
           {isAdmin && (
             <div className="flex items-center justify-end gap-1">
-              <select
-                value={member.tenantRole}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                disabled={roleLoading}
-                className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:opacity-50 bg-white"
+              <button
+                onClick={() => setShowMove(true)}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="Mover a otro tenant"
               >
-                {TENANT_ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+                <ArrowRightLeft size={12} />
+                Mover
+              </button>
               <button
                 onClick={() => setShowRemove(true)}
                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -367,10 +415,21 @@ function MemberRow({
           )}
         </td>
       </tr>
+
+      {showMove && (
+        <MoveTenantModal
+          member={member}
+          currentTenantId={tenantId}
+          allTenants={allTenants}
+          onClose={() => setShowMove(false)}
+          onMoved={onChanged}
+        />
+      )}
+
       <ConfirmDialog
         open={showRemove}
         title="Remover miembro"
-        message={`¿Remover a "${displayName}" del tenant? Perderá acceso a todos los sub-grupos.`}
+        message={`¿Remover a "${displayName}" del tenant?`}
         confirmLabel="Remover"
         danger
         onConfirm={handleRemove}
@@ -384,11 +443,13 @@ function MemberRow({
 
 function TenantCard({
   tenant,
+  allTenants,
   isAdmin,
   onEdit,
   onDeleted,
 }: {
   tenant: TenantView;
+  allTenants: TenantView[];
   isAdmin: boolean;
   onEdit: (t: TenantView) => void;
   onDeleted: () => void;
@@ -407,12 +468,6 @@ function TenantCard({
   const members = membersData?.members ?? [];
   const existingMemberIds = new Set(members.map((m) => m.id));
 
-  // Conteo por sub-grupo
-  const countByRole = members.reduce<Record<string, number>>((acc, m) => {
-    acc[m.tenantRole] = (acc[m.tenantRole] ?? 0) + 1;
-    return acc;
-  }, {});
-
   const handleDelete = async () => {
     setDeleteLoading(true);
     try {
@@ -430,14 +485,11 @@ function TenantCard({
   return (
     <>
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        {/* Cabecera del tenant */}
         <div className="flex items-center gap-4 px-5 py-4">
-          {/* Icono */}
           <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
             <Building2 size={20} className="text-indigo-600" />
           </div>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-semibold text-gray-900">{tenant.name}</h3>
@@ -453,22 +505,8 @@ function TenantCard({
             {tenant.description && (
               <p className="text-xs text-gray-500 mt-0.5 truncate">{tenant.description}</p>
             )}
-
-            {/* Sub-grupos / conteos */}
-            <div className="flex items-center gap-3 mt-2 flex-wrap">
-              {TENANT_ROLES.map((role) => (
-                <span
-                  key={role}
-                  className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[role]}`}
-                >
-                  <Users size={10} />
-                  {role}: {countByRole[role] ?? (expanded ? 0 : "—")}
-                </span>
-              ))}
-            </div>
           </div>
 
-          {/* Acciones */}
           <div className="flex items-center gap-1 flex-shrink-0">
             {isAdmin && (
               <>
@@ -493,16 +531,14 @@ function TenantCard({
               className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Users size={13} />
-              Miembros
+              {expanded && membersData ? `${members.length} miembro${members.length !== 1 ? "s" : ""}` : "Miembros"}
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
           </div>
         </div>
 
-        {/* Panel expandido: miembros */}
         {expanded && (
           <div className="border-t border-gray-100">
-            {/* Toolbar de miembros */}
             <div className="flex items-center justify-between px-5 py-3 bg-gray-50">
               <p className="text-xs text-gray-500 font-medium">
                 {members.length} miembro{members.length !== 1 ? "s" : ""}
@@ -518,7 +554,6 @@ function TenantCard({
               )}
             </div>
 
-            {/* Tabla de miembros */}
             {members.length === 0 ? (
               <div className="px-5 py-6 text-center">
                 <Users size={28} className="mx-auto text-gray-300 mb-2" />
@@ -538,7 +573,6 @@ function TenantCard({
                 <thead>
                   <tr className="bg-gray-50/50">
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuario</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Rol en tenant</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
                     <th className="px-4 py-2" />
                   </tr>
@@ -549,6 +583,7 @@ function TenantCard({
                       key={m.id}
                       member={m}
                       tenantId={tenant.id}
+                      allTenants={allTenants}
                       isAdmin={isAdmin}
                       onChanged={refetchMembers}
                     />
@@ -560,7 +595,6 @@ function TenantCard({
         )}
       </div>
 
-      {/* Modal agregar miembro */}
       {showAddMember && (
         <AddMemberModal
           tenantId={tenant.id}
@@ -571,11 +605,10 @@ function TenantCard({
         />
       )}
 
-      {/* Confirmar eliminar */}
       <ConfirmDialog
         open={showDelete}
         title="Eliminar tenant"
-        message={`¿Eliminar el tenant "${tenant.name}"? Se eliminará el grupo de Keycloak y todos sus miembros perderán acceso.`}
+        message={`¿Eliminar el tenant "${tenant.name}"? Se eliminará el grupo de Keycloak y sus miembros perderán acceso.`}
         confirmLabel="Eliminar"
         danger
         loading={deleteLoading}
@@ -590,7 +623,7 @@ function TenantCard({
 
 export default function Tenants() {
   const { isAdmin } = useRoles();
-  const qc = useQueryClient();  // usado en handleSaved para invalidar queries de miembros
+  const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<TenantView | null>(null);
   const [search, setSearch] = useState("");
@@ -600,7 +633,8 @@ export default function Tenants() {
     queryFn: tenantsApi.list,
   });
 
-  const tenants = (data?.tenants ?? []).filter((t) =>
+  const allTenants = data?.tenants ?? [];
+  const tenants = allTenants.filter((t) =>
     search
       ? t.name.toLowerCase().includes(search.toLowerCase()) ||
         t.slug.toLowerCase().includes(search.toLowerCase()) ||
@@ -615,7 +649,6 @@ export default function Tenants() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
@@ -636,7 +669,6 @@ export default function Tenants() {
         )}
       </div>
 
-      {/* Buscador */}
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -656,20 +688,6 @@ export default function Tenants() {
         )}
       </div>
 
-      {/* Leyenda de roles */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {TENANT_ROLES.map((role) => (
-          <span
-            key={role}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[role]}`}
-          >
-            <Users size={11} />
-            {role}
-          </span>
-        ))}
-      </div>
-
-      {/* Lista de tenants */}
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
           <div className="flex items-center gap-2 text-gray-400">
@@ -682,7 +700,7 @@ export default function Tenants() {
           <p className="font-medium mb-1">Error al cargar tenants</p>
           <p className="text-xs text-red-500">
             {(error as any)?.response?.status === 403
-              ? "Sin permiso. Asigna el rol SUPER_ADMIN o IAM_ADMIN a tu usuario en Keycloak y vuelve a iniciar sesión."
+              ? "Sin permiso. Asigna el rol SUPER_ADMIN o IAM_ADMIN en Keycloak y vuelve a iniciar sesión."
               : (error as any)?.message ?? "Verifica la conexión con Keycloak."}
           </p>
           <button
@@ -714,6 +732,7 @@ export default function Tenants() {
             <TenantCard
               key={tenant.id}
               tenant={tenant}
+              allTenants={allTenants}
               isAdmin={isAdmin}
               onEdit={setEditTarget}
               onDeleted={handleSaved}
@@ -722,12 +741,9 @@ export default function Tenants() {
         </div>
       )}
 
-      {/* Modal crear */}
       {showCreate && (
         <TenantFormModal onClose={() => setShowCreate(false)} onSaved={handleSaved} />
       )}
-
-      {/* Modal editar */}
       {editTarget && (
         <TenantFormModal
           initial={editTarget}

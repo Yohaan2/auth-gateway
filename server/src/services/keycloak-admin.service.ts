@@ -425,16 +425,6 @@ class KeycloakAdminService {
     return found ?? null;
   }
 
-  /** Añade un usuario a un grupo de Keycloak. */
-  addUserToGroup(userId: string, groupId: string): Promise<void> {
-    return this.req({ method: "PUT", url: `/users/${userId}/groups/${groupId}` });
-  }
-
-  /** Elimina un usuario de un grupo de Keycloak. */
-  removeUserFromGroup(userId: string, groupId: string): Promise<void> {
-    return this.req({ method: "DELETE", url: `/users/${userId}/groups/${groupId}` });
-  }
-
   /**
    * Actualiza los atributos personalizados del usuario sin modificar otros campos.
    * Los atributos en Keycloak son Record<string, string[]>.
