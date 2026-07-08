@@ -62,8 +62,8 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
   });
 
   const { data: tenantsData, isLoading: loadingTenants } = useQuery({
-    queryKey: ["tenants"],
-    queryFn: tenantsApi.list,
+    queryKey: ["tenants", "all"],
+    queryFn: () => tenantsApi.list({ first: 0, max: 200 }),
   });
   const availableTenants: TenantView[] = tenantsData?.tenants ?? [];
 

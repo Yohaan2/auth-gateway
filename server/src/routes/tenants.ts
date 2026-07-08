@@ -9,12 +9,15 @@ import { sensitiveLimiter } from "../middleware/rate-limiter";
 const router = Router();
 router.use(requireJwt);
 
-// ─── Listar tenants ───────────────────────────────────────────────────────────
+// ─── Listar tenants (paginado) ────────────────────────────────────────────────
 
-router.get("/", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (_req, res, next) => {
+router.get("/", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (req, res, next) => {
   try {
-    const list = await tenantService.listTenants();
-    res.json({ tenants: list, total: list.length });
+    const first = parseInt((req.query.first as string) ?? "0", 10) || 0;
+    const max = parseInt((req.query.max as string) ?? "15", 10) || 15;
+
+    const result = await tenantService.listTenants({ first, max });
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -136,16 +139,19 @@ router.delete(
 // ─── Miembros del tenant ──────────────────────────────────────────────────────
 
 /**
- * GET /api/admin/tenants/:kcGroupId/members
- * Devuelve los miembros directos del grupo tenant.
+ * GET /api/admin/tenants/:kcGroupId/members?first=0&max=5
+ * Devuelve miembros directos del grupo tenant de forma paginada.
  */
 router.get(
   "/:kcGroupId/members",
   Permissions(IAM_PERMISSIONS.MANAGE_TENANTS),
   async (req, res, next) => {
     try {
-      const members = await tenantService.getTenantMembers(req.params.kcGroupId);
-      res.json({ members, total: members.length });
+      const first = parseInt((req.query.first as string) ?? "0", 10) || 0;
+      const max = parseInt((req.query.max as string) ?? "5", 10) || 5;
+
+      const result = await tenantService.getTenantMembers(req.params.kcGroupId, { first, max });
+      res.json(result);
     } catch (err) {
       next(err);
     }

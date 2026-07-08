@@ -377,9 +377,20 @@ export interface TenantView {
 
 export type TenantMember = KcUser;
 
+export interface TenantListResponse {
+  tenants: TenantView[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface TenantMembersResponse {
+  members: TenantMember[];
+  hasMore: boolean;
+}
+
 export const tenantsApi = {
-  list: () =>
-    api.get<{ tenants: TenantView[]; total: number }>("/tenants").then((r) => r.data),
+  list: (params: { first?: number; max?: number } = {}) =>
+    api.get<TenantListResponse>("/tenants", { params }).then((r) => r.data),
 
   get: (id: string) => api.get<TenantView>(`/tenants/${id}`).then((r) => r.data),
 
@@ -391,9 +402,9 @@ export const tenantsApi = {
 
   delete: (id: string) => api.delete<{ message: string }>(`/tenants/${id}`).then((r) => r.data),
 
-  getMembers: (id: string) =>
+  getMembers: (id: string, params: { first?: number; max?: number } = {}) =>
     api
-      .get<{ members: TenantMember[]; total: number }>(`/tenants/${id}/members`)
+      .get<TenantMembersResponse>(`/tenants/${id}/members`, { params })
       .then((r) => r.data),
 
   addMember: (id: string, userId: string) =>

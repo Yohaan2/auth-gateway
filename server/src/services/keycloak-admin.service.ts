@@ -369,6 +369,10 @@ class KeycloakAdminService {
     return this.req({ method: "GET", url: "/groups", params });
   }
 
+  countGroups(params: { search?: string } = {}): Promise<{ count: number }> {
+    return this.req({ method: "GET", url: "/groups/count", params });
+  }
+
   getGroup(id: string): Promise<KcGroup> {
     return this.req({ method: "GET", url: `/groups/${id}` });
   }

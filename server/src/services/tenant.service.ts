@@ -84,19 +84,37 @@ function buildTenantView(
   };
 }
 
+const DEFAULT_PAGE_SIZE = 15;
+const DEFAULT_MEMBERS_SIZE = 5;
+
 // ─── Servicio ─────────────────────────────────────────────────────────────────
 
 class TenantService {
 
-  // ─── Listado ──────────────────────────────────────────────────────────────
+  // ─── Listado paginado ─────────────────────────────────────────────────────
 
-  async listTenants(): Promise<TenantView[]> {
-    const [kcGroups, dbRows] = await Promise.all([
-      kcAdmin.listGroups({ max: 500 }),
+  async listTenants(params: { first?: number; max?: number } = {}): Promise<{
+    tenants: TenantView[];
+    total: number;
+    hasMore: boolean;
+  }> {
+    const first = params.first ?? 0;
+    const max = params.max ?? DEFAULT_PAGE_SIZE;
+
+    const [kcGroups, countResult, dbRows] = await Promise.all([
+      kcAdmin.listGroups({ first, max }),
+      kcAdmin.countGroups(),
       db.select().from(tenants),
     ]);
+
     const dbMap = new Map(dbRows.map((t) => [t.keycloakGroupId, t]));
-    return kcGroups.map((g) => buildTenantView(g, dbMap.get(g.id) ?? null));
+    const list = kcGroups.map((g) => buildTenantView(g, dbMap.get(g.id) ?? null));
+
+    return {
+      tenants: list,
+      total: countResult.count,
+      hasMore: first + list.length < countResult.count,
+    };
   }
 
   // ─── Detalle ──────────────────────────────────────────────────────────────
@@ -217,9 +235,21 @@ class TenantService {
 
   // ─── Miembros ─────────────────────────────────────────────────────────────
 
-  /** Devuelve los miembros directos del grupo tenant. */
-  async getTenantMembers(kcGroupId: string): Promise<KcUser[]> {
-    return kcAdmin.getGroupMembers(kcGroupId, { max: 500 });
+  /**
+   * Devuelve miembros directos del grupo tenant de forma paginada.
+   * Por defecto devuelve los primeros `DEFAULT_MEMBERS_SIZE`.
+   */
+  async getTenantMembers(
+    kcGroupId: string,
+    params: { first?: number; max?: number } = {}
+  ): Promise<{ members: KcUser[]; hasMore: boolean }> {
+    const first = params.first ?? 0;
+    const max = params.max ?? DEFAULT_MEMBERS_SIZE;
+
+    // Pedimos max+1 para saber si hay más sin hacer una segunda llamada
+    const raw = await kcAdmin.getGroupMembers(kcGroupId, { first, max: max + 1 });
+    const hasMore = raw.length > max;
+    return { members: raw.slice(0, max), hasMore };
   }
 
   /** Asigna un usuario al tenant (añade al grupo KC directamente). */
@@ -227,21 +257,25 @@ class TenantService {
     await kcAdmin.addUserToGroup(userId, kcGroupId);
   }
 
-  /** Mueve a un usuario de cualquier tenant actual al tenant destino. */
+  /**
+   * Mueve a un usuario al tenant destino.
+   * Usa los grupos del propio usuario para detectar su tenant actual,
+   * evitando cargar todos los grupos del realm.
+   */
   async moveUserToTenant(userId: string, targetTenantId: string): Promise<void> {
-    // Obtener todos los tenants para detectar de cuál hay que salir
-    const allGroups = await kcAdmin.listGroups({ max: 500 });
     const userGroups = await kcAdmin.getUserGroups(userId);
-    const tenantGroupIds = new Set(allGroups.map((g) => g.id));
 
-    // Remover de cualquier tenant actual
+    // Los grupos tenant tienen path de profundidad 1: "/Tenant A"
+    const tenantGroupsToLeave = userGroups.filter((g) => {
+      if (!g.id || g.id === targetTenantId) return false;
+      const depth = (g.path ?? "").split("/").filter(Boolean).length;
+      return depth === 1;
+    });
+
     await Promise.all(
-      userGroups
-        .filter((g) => g.id && tenantGroupIds.has(g.id) && g.id !== targetTenantId)
-        .map((g) => kcAdmin.removeUserFromGroup(userId, g.id!).catch(() => {}))
+      tenantGroupsToLeave.map((g) => kcAdmin.removeUserFromGroup(userId, g.id!).catch(() => {}))
     );
 
-    // Agregar al tenant destino
     await kcAdmin.addUserToGroup(userId, targetTenantId);
   }
 
