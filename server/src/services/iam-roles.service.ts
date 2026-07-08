@@ -6,6 +6,7 @@ import {
   type IamRole,
   type IamPermission,
 } from "../config/iam-roles";
+import { env } from "../config/env";
 
 /**
  * Servicio encargado de consultar los roles administrativos del IAM
@@ -14,13 +15,23 @@ import {
  */
 export const iamRolesService = {
   /**
-   * Extrae únicamente los roles administrativos del IAM presentes en
-   * `realm_access.roles` del token, ignorando cualquier otro rol de realm
-   * o de cliente que no pertenezca a esta matriz.
+   * Extrae los roles administrativos del IAM presentes en `realm_access.roles`.
+   *
+   * Compatibilidad legacy: si el usuario tiene el rol de administrador del
+   * panel (`KEYCLOAK_ADMIN_ROLE`, p. ej. `auth-manager-admin`) pero ningún
+   * rol IAM explícito, se le otorga automáticamente `SUPER_ADMIN`. Esto
+   * evita que la instalación inicial quede bloqueada antes de que el
+   * administrador asigne los roles IAM desde Keycloak.
    */
   getUserIamRoles(payload?: KeycloakTokenPayload): IamRole[] {
     const realmRoles = payload?.realm_access?.roles ?? [];
-    return realmRoles.filter(isIamRole);
+    const iamRoles = realmRoles.filter(isIamRole);
+
+    if (iamRoles.length === 0 && realmRoles.includes(env.KEYCLOAK_ADMIN_ROLE)) {
+      return [IAM_ROLES.SUPER_ADMIN];
+    }
+
+    return iamRoles;
   },
 
   /**

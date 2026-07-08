@@ -108,6 +108,27 @@ export type NewTemplateClaim = typeof templateClaims.$inferInsert;
 export type TemplatePermission = typeof templatePermissions.$inferSelect;
 export type NewTemplatePermission = typeof templatePermissions.$inferInsert;
 
+// ─── Tenants — Fase 4: Multitenancy ──────────────────────────────────────────
+//
+// Cada tenant espeja un Group de Keycloak. La estructura de sub-grupos
+// (Administradores / Operadores / Supervisores) se gestiona directamente
+// en Keycloak; aquí solo guardamos los metadatos y la referencia al grupo.
+
+export const tenants = pgTable("tenants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  keycloakGroupId: varchar("keycloak_group_id", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  active: boolean("active").default(true).notNull(),
+  settings: json("settings").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Tenant = typeof tenants.$inferSelect;
+export type NewTenant = typeof tenants.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;

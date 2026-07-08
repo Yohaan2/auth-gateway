@@ -58,6 +58,17 @@ export interface KcGroup {
   name: string;
   path?: string;
   subGroups?: KcGroup[];
+  attributes?: Record<string, string[]>;
+}
+
+export interface CreateGroupPayload {
+  name: string;
+  attributes?: Record<string, string[]>;
+}
+
+export interface UpdateGroupPayload {
+  name?: string;
+  attributes?: Record<string, string[]>;
 }
 
 export interface KcRoleMappings {
@@ -351,8 +362,52 @@ class KeycloakAdminService {
 
   // ─── Grupos ──────────────────────────────────────────────────────────────
 
-  listGroups(): Promise<KcGroup[]> {
-    return this.req({ method: "GET", url: "/groups" });
+  listGroups(params: { search?: string; first?: number; max?: number } = {}): Promise<KcGroup[]> {
+    return this.req({ method: "GET", url: "/groups", params });
+  }
+
+  getGroup(id: string): Promise<KcGroup> {
+    return this.req({ method: "GET", url: `/groups/${id}` });
+  }
+
+  async createGroup(payload: CreateGroupPayload): Promise<string> {
+    const token = await this.getAdminToken();
+    const base = `/admin/realms/${env.KEYCLOAK_REALM}`;
+    const resp = await this.http.post(`${base}/groups`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const location = resp.headers["location"] as string;
+    return location ? location.split("/").pop()! : "";
+  }
+
+  async createSubGroup(parentId: string, payload: CreateGroupPayload): Promise<string> {
+    const token = await this.getAdminToken();
+    const base = `/admin/realms/${env.KEYCLOAK_REALM}`;
+    const resp = await this.http.post(`${base}/groups/${parentId}/children`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const location = resp.headers["location"] as string;
+    return location ? location.split("/").pop()! : "";
+  }
+
+  updateGroup(id: string, payload: UpdateGroupPayload): Promise<void> {
+    return this.req({ method: "PUT", url: `/groups/${id}`, data: payload });
+  }
+
+  deleteGroup(id: string): Promise<void> {
+    return this.req({ method: "DELETE", url: `/groups/${id}` });
+  }
+
+  getGroupMembers(id: string, params: { first?: number; max?: number } = {}): Promise<KcUser[]> {
+    return this.req({ method: "GET", url: `/groups/${id}/members`, params });
+  }
+
+  addUserToGroup(userId: string, groupId: string): Promise<void> {
+    return this.req({ method: "PUT", url: `/users/${userId}/groups/${groupId}` });
+  }
+
+  removeUserFromGroup(userId: string, groupId: string): Promise<void> {
+    return this.req({ method: "DELETE", url: `/users/${userId}/groups/${groupId}` });
   }
 }
 

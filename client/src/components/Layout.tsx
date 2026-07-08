@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   LayoutTemplate,
+  Building2,
 } from "lucide-react";
 import { useState } from "react";
 import { useRoles } from "../auth/useRoles";
@@ -23,6 +24,7 @@ const NAV_ITEMS: { path: string; label: string; icon: typeof LayoutDashboard; pe
   { path: "/roles", label: "Roles", icon: ShieldCheck, permission: "iam:manage_roles" },
   { path: "/modules", label: "Módulos", icon: AppWindow, permission: "iam:manage_settings" },
   { path: "/templates", label: "Plantillas de Acceso", icon: LayoutTemplate, permission: "iam:manage_templates" },
+  { path: "/tenants", label: "Tenants", icon: Building2, permission: "iam:manage_tenants" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
