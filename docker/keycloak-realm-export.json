@@ -275,26 +275,6 @@
       "groups": []
     },
     {
-      "username": "usuario@optrax.com",
-      "email": "usuario@optrax.com",
-      "firstName": "Usuario",
-      "lastName": "Prueba",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "user123",
-          "temporary": false
-        }
-      ],
-      "clientRoles": {},
-      "realmRoles": [
-        "auth-manager-viewer"
-      ],
-      "groups": []
-    },
-    {
       "username": "service-account-auth-manager-sa",
       "enabled": true,
       "emailVerified": false,

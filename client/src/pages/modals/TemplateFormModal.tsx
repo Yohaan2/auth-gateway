@@ -7,7 +7,6 @@ import {
   type AccessTemplateDetail,
   type TemplatePayload,
   type TemplateRoleInput,
-  type TemplateGroupInput,
   type TemplateClaimInput,
   type TemplatePermissionInput,
 } from "../../api/admin-api";
@@ -18,12 +17,11 @@ interface Props {
   onSaved: () => void;
 }
 
-type TabKey = "general" | "roles" | "groups" | "claims" | "permissions";
+type TabKey = "general" | "roles" | "claims" | "permissions";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "general", label: "General" },
   { key: "roles", label: "Roles" },
-  { key: "groups", label: "Grupos" },
   { key: "claims", label: "Claims" },
   { key: "permissions", label: "Permisos" },
 ];
@@ -34,7 +32,6 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
   const [description, setDescription] = useState(initial?.description ?? "");
   const [active, setActive] = useState(initial?.active ?? true);
   const [roles, setRoles] = useState<TemplateRoleInput[]>(initial?.roles ?? []);
-  const [groups, setGroups] = useState<TemplateGroupInput[]>(initial?.groups ?? []);
   const [claims, setClaims] = useState<TemplateClaimInput[]>(initial?.claims ?? []);
   const [permissions, setPermissions] = useState<TemplatePermissionInput[]>(
     initial?.permissions ?? []
@@ -46,14 +43,8 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
     queryFn: templatesApi.listKeycloakRoles,
     staleTime: 60_000,
   });
-  const kcGroupsQ = useQuery({
-    queryKey: ["kc-groups-for-templates"],
-    queryFn: templatesApi.listKeycloakGroups,
-    staleTime: 60_000,
-  });
 
   const [selectedRole, setSelectedRole] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState("");
   const [newClaim, setNewClaim] = useState({ claimKey: "", claimValue: "" });
   const [newPermission, setNewPermission] = useState<TemplatePermissionInput>({
     resource: "",
@@ -71,17 +62,6 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
     }
     setRoles((prev) => [...prev, { roleName: kcRole.name, roleId: kcRole.id, isClientRole: false }]);
     setSelectedRole("");
-  };
-
-  const addGroup = () => {
-    const kcGroup = kcGroupsQ.data?.find((g) => g.id === selectedGroup);
-    if (!kcGroup) return;
-    if (groups.some((g) => g.groupId === kcGroup.id)) {
-      toast.error("Ese grupo ya fue agregado.");
-      return;
-    }
-    setGroups((prev) => [...prev, { groupId: kcGroup.id, groupPath: kcGroup.path || kcGroup.name }]);
-    setSelectedGroup("");
   };
 
   const addClaim = () => {
@@ -115,7 +95,6 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
         description: description.trim() || undefined,
         active,
         roles,
-        groups,
         claims,
         permissions,
       };
@@ -160,7 +139,6 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
             >
               {t.label}
               {t.key === "roles" && roles.length > 0 && ` (${roles.length})`}
-              {t.key === "groups" && groups.length > 0 && ` (${groups.length})`}
               {t.key === "claims" && claims.length > 0 && ` (${claims.length})`}
               {t.key === "permissions" && permissions.length > 0 && ` (${permissions.length})`}
             </button>
@@ -237,51 +215,6 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
                     <span className="text-gray-800">{r.roleName}</span>
                     <button
                       onClick={() => setRoles((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {tab === "groups" && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <select
-                  value={selectedGroup}
-                  onChange={(e) => setSelectedGroup(e.target.value)}
-                  className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-                  <option value="">
-                    {kcGroupsQ.isLoading ? "Cargando grupos de Keycloak..." : "Seleccionar grupo/organización..."}
-                  </option>
-                  {kcGroupsQ.data?.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.path || g.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={addGroup}
-                  type="button"
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div className="space-y-1">
-                {groups.length === 0 && <p className="text-xs text-gray-400">Sin grupos asociados.</p>}
-                {groups.map((g, idx) => (
-                  <div
-                    key={`${g.groupId}-${idx}`}
-                    className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <span className="text-gray-800">{g.groupPath}</span>
-                    <button
-                      onClick={() => setGroups((prev) => prev.filter((_, i) => i !== idx))}
                       className="text-gray-400 hover:text-red-600"
                     >
                       <Trash2 size={14} />

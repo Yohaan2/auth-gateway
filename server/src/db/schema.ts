@@ -84,16 +84,6 @@ export const templateRoles = pgTable("template_roles", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Grupos/Organizaciones de Keycloak asociados a una plantilla
-export const templateGroups = pgTable("template_groups", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  templateId: uuid("template_id")
-    .notNull()
-    .references(() => accessTemplates.id, { onDelete: "cascade" }),
-  groupId: varchar("group_id", { length: 255 }).notNull(), // ID del grupo en Keycloak
-  groupPath: varchar("group_path", { length: 500 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
 
 // Claims / atributos personalizados (key/value) de una plantilla
 export const templateClaims = pgTable("template_claims", {
@@ -124,8 +114,6 @@ export type AccessTemplate = typeof accessTemplates.$inferSelect;
 export type NewAccessTemplate = typeof accessTemplates.$inferInsert;
 export type TemplateRole = typeof templateRoles.$inferSelect;
 export type NewTemplateRole = typeof templateRoles.$inferInsert;
-export type TemplateGroup = typeof templateGroups.$inferSelect;
-export type NewTemplateGroup = typeof templateGroups.$inferInsert;
 export type TemplateClaim = typeof templateClaims.$inferSelect;
 export type NewTemplateClaim = typeof templateClaims.$inferInsert;
 export type TemplatePermission = typeof templatePermissions.$inferSelect;

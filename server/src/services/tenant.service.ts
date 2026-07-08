@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { tenants } from "../db/schema";
+import { tenants, iamUsers } from "../db/schema";
 import { kcAdmin, type KcGroup, type KcUser } from "./keycloak-admin.service";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -252,9 +252,22 @@ class TenantService {
     return { members: raw.slice(0, max), hasMore };
   }
 
-  /** Asigna un usuario al tenant (añade al grupo KC directamente). */
+  /** Asigna un usuario al tenant (añade al grupo KC directamente y actualiza iam_users). */
   async addUserToTenant(kcGroupId: string, userId: string): Promise<void> {
     await kcAdmin.addUserToGroup(userId, kcGroupId);
+
+    // Obtener el nombre del tenant desde Keycloak
+    const group = await kcAdmin.getGroup(kcGroupId);
+    const tenantName = group.name;
+
+    // Actualizar el campo tenant en iam_users
+    await db
+      .update(iamUsers)
+      .set({ tenant: tenantName, updatedAt: new Date() })
+      .where(eq(iamUsers.keycloakId, userId))
+      .catch(() => {
+        // Si el usuario no existe en iam_users, no hacemos nada (se creará al aprovisionar)
+      });
   }
 
   /**
@@ -277,11 +290,33 @@ class TenantService {
     );
 
     await kcAdmin.addUserToGroup(userId, targetTenantId);
+
+    // Obtener el nombre del tenant destino
+    const targetGroup = await kcAdmin.getGroup(targetTenantId);
+    const tenantName = targetGroup.name;
+
+    // Actualizar el campo tenant en iam_users
+    await db
+      .update(iamUsers)
+      .set({ tenant: tenantName, updatedAt: new Date() })
+      .where(eq(iamUsers.keycloakId, userId))
+      .catch(() => {
+        // Si el usuario no existe en iam_users, no hacemos nada
+      });
   }
 
-  /** Saca al usuario del tenant (elimina del grupo KC). */
+  /** Saca al usuario del tenant (elimina del grupo KC y actualiza iam_users). */
   async removeUserFromTenant(kcGroupId: string, userId: string): Promise<void> {
     await kcAdmin.removeUserFromGroup(userId, kcGroupId).catch(() => {});
+
+    // Limpiar el campo tenant en iam_users
+    await db
+      .update(iamUsers)
+      .set({ tenant: null, updatedAt: new Date() })
+      .where(eq(iamUsers.keycloakId, userId))
+      .catch(() => {
+        // Si el usuario no existe en iam_users, no hacemos nada
+      });
   }
 }
 
