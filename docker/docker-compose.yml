@@ -38,9 +38,6 @@ services:
       KC_HOSTNAME: "auth.optrax.io"
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
-      KC_DB_URL: "jdbc:postgresql://postgres:5432/${KC_POSTGRES_DB}"
-      KC_DB_USERNAME: "${POSTGRES_USER}"
-      KC_DB_PASSWORD: "${POSTGRES_PASSWORD}"
     depends_on:
       postgres:
         condition: service_healthy
