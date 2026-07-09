@@ -15,8 +15,9 @@ router.get("/", Permissions(IAM_PERMISSIONS.MANAGE_TENANTS), async (req, res, ne
   try {
     const first = parseInt((req.query.first as string) ?? "0", 10) || 0;
     const max = parseInt((req.query.max as string) ?? "15", 10) || 15;
+    const search = (req.query.search as string) ?? undefined;
 
-    const result = await tenantService.listTenants({ first, max });
+    const result = await tenantService.listTenants({ first, max, search });
     res.json(result);
   } catch (err) {
     next(err);

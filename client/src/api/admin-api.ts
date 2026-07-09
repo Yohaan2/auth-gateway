@@ -389,7 +389,7 @@ export interface TenantMembersResponse {
 }
 
 export const tenantsApi = {
-  list: (params: { first?: number; max?: number } = {}) =>
+  list: (params: { first?: number; max?: number; search?: string } = {}) =>
     api.get<TenantListResponse>("/tenants", { params }).then((r) => r.data),
 
   get: (id: string) => api.get<TenantView>(`/tenants/${id}`).then((r) => r.data),

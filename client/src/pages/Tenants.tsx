@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -21,9 +21,6 @@ import toast from "react-hot-toast";
 import { tenantsApi, usersApi, type TenantView, type TenantMember, type KcUser } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useRoles } from "../auth/useRoles";
-
-const PAGE_SIZE = 15;
-const MEMBERS_PAGE_SIZE = 5;
 
 // ─── Modal: Crear / Editar Tenant ────────────────────────────────────────────
 
@@ -462,36 +459,35 @@ function TenantCard({
   const [showDelete, setShowDelete] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [membersPage, setMembersPage] = useState(0);
+  const [membersOffset, setMembersOffset] = useState(0);
   const [allMembers, setAllMembers] = useState<TenantMember[]>([]);
   const [hasMoreMembers, setHasMoreMembers] = useState(false);
 
-  const { data: membersData, isFetching: membersFetching, refetch: refetchMembers } = useQuery({
-    queryKey: ["tenant-members", tenant.id, membersPage],
-    queryFn: () =>
-      tenantsApi.getMembers(tenant.id, { first: membersPage * MEMBERS_PAGE_SIZE, max: MEMBERS_PAGE_SIZE }),
+  const MEMBERS_PAGE = 5;
+
+  const { isFetching: membersFetching, refetch: refetchPage } = useQuery({
+    queryKey: ["tenant-members", tenant.id, membersOffset],
+    queryFn: async () => {
+      const result = await tenantsApi.getMembers(tenant.id, { first: membersOffset, max: MEMBERS_PAGE });
+      if (membersOffset === 0) {
+        setAllMembers(result.members);
+      } else {
+        setAllMembers((prev) => {
+          const ids = new Set(prev.map((m) => m.id));
+          return [...prev, ...result.members.filter((m) => !ids.has(m.id))];
+        });
+      }
+      setHasMoreMembers(result.hasMore);
+      return result;
+    },
     enabled: expanded,
   });
 
-  useEffect(() => {
-    if (!membersData) return;
-    if (membersPage === 0) {
-      setAllMembers(membersData.members);
-    } else {
-      setAllMembers((prev) => {
-        const ids = new Set(prev.map((m) => m.id));
-        const newOnes = membersData.members.filter((m) => !ids.has(m.id));
-        return [...prev, ...newOnes];
-      });
-    }
-    setHasMoreMembers(membersData.hasMore);
-  }, [membersData, membersPage]);
-
-  const handleRefreshMembers = useCallback(() => {
-    setMembersPage(0);
+  const refetchMembers = () => {
+    setMembersOffset(0);
     setAllMembers([]);
-    refetchMembers();
-  }, [refetchMembers]);
+    refetchPage();
+  };
 
   const members = allMembers;
   const existingMemberIds = new Set(members.map((m) => m.id));
@@ -559,7 +555,7 @@ function TenantCard({
               className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Users size={13} />
-              {expanded && membersData ? `${members.length} miembro${members.length !== 1 ? "s" : ""}` : "Miembros"}
+              {expanded && members.length > 0 ? `${members.length} miembro${members.length !== 1 ? "s" : ""}` : "Miembros"}
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
           </div>
@@ -570,7 +566,6 @@ function TenantCard({
             <div className="flex items-center justify-between px-5 py-3 bg-gray-50">
               <p className="text-xs text-gray-500 font-medium">
                 {members.length} miembro{members.length !== 1 ? "s" : ""}
-                {hasMoreMembers && <span className="text-gray-400"> (hay más)</span>}
               </p>
               {isAdmin && (
                 <button
@@ -583,7 +578,7 @@ function TenantCard({
               )}
             </div>
 
-            {members.length === 0 && !membersFetching ? (
+            {members.length === 0 ? (
               <div className="px-5 py-6 text-center">
                 <Users size={28} className="mx-auto text-gray-300 mb-2" />
                 <p className="text-sm text-gray-400">Este tenant no tiene miembros aún.</p>
@@ -615,25 +610,22 @@ function TenantCard({
                         tenantId={tenant.id}
                         allTenants={allTenants}
                         isAdmin={isAdmin}
-                        onChanged={handleRefreshMembers}
+                        onChanged={refetchMembers}
                       />
                     ))}
                   </tbody>
                 </table>
 
-                {/* Paginación de miembros */}
                 {(hasMoreMembers || membersFetching) && (
-                  <div className="px-5 py-3 border-t border-gray-100 flex justify-center">
+                  <div className="px-5 py-2.5 border-t border-gray-100 flex justify-center">
                     <button
-                      onClick={() => setMembersPage((p) => p + 1)}
+                      onClick={() => setMembersOffset((o) => o + MEMBERS_PAGE)}
                       disabled={membersFetching}
                       className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
                     >
-                      {membersFetching ? (
-                        <><Loader2 size={12} className="animate-spin" />Cargando...</>
-                      ) : (
-                        <>Ver {MEMBERS_PAGE_SIZE} más</>
-                      )}
+                      {membersFetching
+                        ? <><Loader2 size={12} className="animate-spin" />Cargando...</>
+                        : `Ver ${MEMBERS_PAGE} más`}
                     </button>
                   </div>
                 )}
@@ -649,7 +641,7 @@ function TenantCard({
           tenantName={tenant.name}
           existingMemberIds={existingMemberIds}
           onClose={() => setShowAddMember(false)}
-          onAdded={handleRefreshMembers}
+          onAdded={refetchMembers}
         />
       )}
 
@@ -669,6 +661,8 @@ function TenantCard({
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+const TENANTS_PAGE = 15;
+
 export default function Tenants() {
   const { isAdmin } = useRoles();
   const qc = useQueryClient();
@@ -680,15 +674,15 @@ export default function Tenants() {
   const {
     data,
     isLoading,
-    isFetchingNextPage,
     error,
-    fetchNextPage,
     hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
     refetch,
   } = useInfiniteQuery({
     queryKey: ["tenants", search],
     queryFn: ({ pageParam = 0 }) =>
-      tenantsApi.list({ first: pageParam as number, max: PAGE_SIZE }),
+      tenantsApi.list({ first: pageParam as number, max: TENANTS_PAGE, search: search || undefined }),
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage.hasMore) return undefined;
       return allPages.reduce((sum, p) => sum + p.tenants.length, 0);
@@ -696,32 +690,20 @@ export default function Tenants() {
     initialPageParam: 0,
   });
 
-  // Todos los tenants acumulados de todas las páginas
-  const allTenants = data?.pages.flatMap((p) => p.tenants) ?? [];
+  const tenants = data?.pages.flatMap((p) => p.tenants) ?? [];
   const total = data?.pages[0]?.total ?? 0;
 
-  // Filtrado local por búsqueda (la búsqueda reinicia la query)
-  const tenants = search
-    ? allTenants.filter(
-        (t) =>
-          t.name.toLowerCase().includes(search.toLowerCase()) ||
-          t.slug.toLowerCase().includes(search.toLowerCase()) ||
-          (t.description ?? "").toLowerCase().includes(search.toLowerCase())
-      )
-    : allTenants;
-
-  // IntersectionObserver para detectar cuando el sentinel llega al viewport
+  // Disparar siguiente página al llegar al sentinel
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
           fetchNextPage();
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "150px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -739,9 +721,7 @@ export default function Tenants() {
           <p className="text-sm text-gray-500 mt-0.5">
             {total > 0
               ? `${total} tenant${total !== 1 ? "s" : ""} — grupos de Keycloak`
-              : isLoading
-              ? "Cargando..."
-              : "Grupos de Keycloak"}
+              : isLoading ? "Cargando..." : "Grupos de Keycloak"}
           </p>
         </div>
         {isAdmin && (
@@ -818,19 +798,19 @@ export default function Tenants() {
             <TenantCard
               key={tenant.id}
               tenant={tenant}
-              allTenants={allTenants}
+              allTenants={tenants}
               isAdmin={isAdmin}
               onEdit={setEditTarget}
               onDeleted={handleSaved}
             />
           ))}
 
-          {/* Sentinel para lazy scroll */}
-          <div ref={sentinelRef} className="h-4" />
+          {/* Sentinel: al llegar aquí se carga la siguiente página */}
+          <div ref={sentinelRef} />
 
           {isFetchingNextPage && (
             <div className="flex items-center justify-center py-4 gap-2 text-gray-400">
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={15} className="animate-spin" />
               <span className="text-sm">Cargando más tenants...</span>
             </div>
           )}
