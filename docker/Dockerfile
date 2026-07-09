@@ -20,8 +20,6 @@ WORKDIR /app
 
 # Copiar dependencias instaladas y archivos fuentes
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/client/node_modules ./client/node_modules
-COPY --from=deps /app/server/node_modules ./server/node_modules
 COPY package.json ./
 COPY client ./client
 COPY server ./server

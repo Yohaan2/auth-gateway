@@ -8,16 +8,14 @@ services:
     image: postgres:15-alpine
     container_name: auth-optrax-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-auth_optrax}
+    env_file:
+      - ../.env
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-auth_optrax}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_optrax}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -31,9 +29,9 @@ services:
     image: quay.io/keycloak/keycloak:26.6.4
     container_name: auth-optrax-keycloak
     command: start-dev --import-realm
+    env_file:
+      - ../.env
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
@@ -43,64 +41,51 @@ services:
     volumes:
       # Si se desea importar un Realm pre-configurado de prueba
       - ./keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - optrax-network
 
   # ==========================================
   # APLICACIÓN NODE/EXPRESS + REACT (APP)
   # ==========================================
-  # app:
-  #   build:
-  #     context: ..
-  #     dockerfile: docker/Dockerfile
-  #   container_name: auth-optrax-app
-  #   restart: unless-stopped
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   environment:
-  #     PORT: 3000
-  #     NODE_ENV: production
-  #     APP_URL: http://localhost:3000
-  #     FRONTEND_URL: http://localhost:3000
-  #     SESSION_SECRET: ${SESSION_SECRET}
-  #     DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-auth_optrax}
-  #     # URL pública de Keycloak (accesible desde el navegador — para issuer del JWT)
-  #     KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
-  #     # URL interna (backend → Keycloak dentro de la red Docker)
-  #     KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-  #     KEYCLOAK_REALM: ${KEYCLOAK_REALM:-optrax-realm}
-  #     # Client confidencial del Auth Manager (flujo legacy de sesión)
-  #     KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-auth-manager}
-  #     KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-  #     KEYCLOAK_REDIRECT_URI: http://localhost:3000/api/auth/callback
-  #     KEYCLOAK_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
-  #     # Service Account para Admin REST API
-  #     KEYCLOAK_SA_CLIENT_ID: ${KEYCLOAK_SA_CLIENT_ID:-auth-manager-sa}
-  #     KEYCLOAK_SA_CLIENT_SECRET: ${KEYCLOAK_SA_CLIENT_SECRET}
-  #     # Roles internos del panel
-  #     KEYCLOAK_ADMIN_ROLE: ${KEYCLOAK_ADMIN_ROLE:-auth-manager-admin}
-  #     KEYCLOAK_VIEWER_ROLE: ${KEYCLOAK_VIEWER_ROLE:-auth-manager-viewer}
-  #   ports:
-  #     - "3000:3000"
-  #   networks:
-  #     - optrax-network
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: auth-optrax-app
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - optrax-network
 
   # ==========================================
   # PROXY REVERSO (NGINX)
   # ==========================================
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: auth-optrax-nginx
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - app
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-  #   networks:
-  #     - optrax-network
+  nginx:
+    image: nginx:alpine
+    container_name: auth-optrax-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - optrax-network
 
 volumes:
   pgdata:

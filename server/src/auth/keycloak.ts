@@ -15,16 +15,16 @@ export async function getKeycloakClient(): Promise<Client> {
   try {
     const keycloakBaseUrl = env.KEYCLOAK_INTERNAL_URL || env.KEYCLOAK_URL;
     const issuerUrl = `${keycloakBaseUrl}/realms/${env.KEYCLOAK_REALM}`;
-    
+
     console.log(`🔌 Descubriendo configuración de Keycloak en: ${issuerUrl}...`);
     const keycloakIssuer = await Issuer.discover(issuerUrl);
-    
+
     keycloakClient = new keycloakIssuer.Client({
       client_id: env.KEYCLOAK_CLIENT_ID,
       client_secret: env.KEYCLOAK_CLIENT_SECRET,
       redirect_uris: [env.KEYCLOAK_REDIRECT_URI],
-      post_logout_redirect_uris: env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI 
-        ? [env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI] 
+      post_logout_redirect_uris: env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI
+        ? [env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI]
         : [env.APP_URL],
       response_types: ["code"],
     });

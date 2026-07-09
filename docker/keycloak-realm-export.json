@@ -4,12 +4,13 @@
   "enabled": true,
   "displayName": "Optrax Realm",
   "sslRequired": "external",
-  "registrationAllowed": true,
+  "registrationAllowed": false,
   "registrationEmailAsUsername": true,
   "rememberMe": true,
   "verifyEmail": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
+
   "clients": [
     {
       "clientId": "optrax-app",
@@ -17,6 +18,7 @@
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
+      "secret": "4qwu7xPz8Q2oViH0ZOQUrVizWuF2FQ3z",
       "bearerOnly": false,
       "consentRequired": false,
       "standardFlowEnabled": true,
@@ -24,17 +26,8 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "authorizationServicesEnabled": false,
-      "secret": "7ff86a2f-e8b8-4d56-b072-bc106517e4f9",
-      "redirectUris": [
-        "http://localhost/*",
-        "http://localhost:3000/*"
-      ],
-      "webOrigins": [
-        "http://localhost",
-        "http://localhost:3000"
-      ],
-      "adminUrl": "http://localhost:3000",
-      "baseUrl": "http://localhost:3000",
+      "redirectUris": [],
+      "webOrigins": [],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -64,6 +57,7 @@
         }
       ]
     },
+
     {
       "clientId": "optrax-frontend",
       "name": "Optrax Frontend Application",
@@ -116,12 +110,14 @@
         }
       ]
     },
+
     {
       "clientId": "auth-manager-sa",
       "name": "Auth Manager Admin Service Account",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
+      "secret": "oTgwcsQmQTNgaQvWq8aHa3nsMhuQttlo",
       "bearerOnly": false,
       "consentRequired": false,
       "standardFlowEnabled": false,
@@ -129,7 +125,6 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": false,
-      "secret": "A5ptC0SjWERS30L6FlqJ84aqogqD5c4i",
       "redirectUris": [],
       "webOrigins": [],
       "defaultClientScopes": [
@@ -147,16 +142,9 @@
       ]
     }
   ],
+
   "roles": {
     "realm": [
-      {
-        "name": "auth-manager-admin",
-        "description": "Administrador del Auth Manager"
-      },
-      {
-        "name": "auth-manager-viewer",
-        "description": "Lector del Auth Manager"
-      },
       {
         "name": "SUPER_ADMIN",
         "description": "Acceso administrativo total al módulo IAM de Optrax"
@@ -175,105 +163,7 @@
       }
     ]
   },
-  "groups": [
-    {
-      "name": "Tenant A",
-      "path": "/Tenant A",
-      "attributes": {
-        "tenant_slug": ["tenant-a"],
-        "tenant_display_name": ["Tenant A"]
-      },
-      "subGroups": [
-        {
-          "name": "Administradores",
-          "path": "/Tenant A/Administradores",
-          "attributes": {}
-        },
-        {
-          "name": "Operadores",
-          "path": "/Tenant A/Operadores",
-          "attributes": {}
-        },
-        {
-          "name": "Supervisores",
-          "path": "/Tenant A/Supervisores",
-          "attributes": {}
-        }
-      ]
-    },
-    {
-      "name": "Tenant B",
-      "path": "/Tenant B",
-      "attributes": {
-        "tenant_slug": ["tenant-b"],
-        "tenant_display_name": ["Tenant B"]
-      },
-      "subGroups": [
-        {
-          "name": "Administradores",
-          "path": "/Tenant B/Administradores",
-          "attributes": {}
-        },
-        {
-          "name": "Operadores",
-          "path": "/Tenant B/Operadores",
-          "attributes": {}
-        },
-        {
-          "name": "Supervisores",
-          "path": "/Tenant B/Supervisores",
-          "attributes": {}
-        }
-      ]
-    },
-    {
-      "name": "Tenant C",
-      "path": "/Tenant C",
-      "attributes": {
-        "tenant_slug": ["tenant-c"],
-        "tenant_display_name": ["Tenant C"]
-      },
-      "subGroups": [
-        {
-          "name": "Administradores",
-          "path": "/Tenant C/Administradores",
-          "attributes": {}
-        },
-        {
-          "name": "Operadores",
-          "path": "/Tenant C/Operadores",
-          "attributes": {}
-        },
-        {
-          "name": "Supervisores",
-          "path": "/Tenant C/Supervisores",
-          "attributes": {}
-        }
-      ]
-    }
-  ],
-  "users": [
-    {
-      "username": "admin@optrax.com",
-      "email": "admin@optrax.com",
-      "firstName": "Admin",
-      "lastName": "Optrax",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "admin123",
-          "temporary": false
-        }
-      ],
-      "clientRoles": {},
-      "realmRoles": [
-        "auth-manager-admin",
-        "SUPER_ADMIN"
-      ],
-      "groups": []
-    },
+    "users": [
     {
       "username": "service-account-auth-manager-sa",
       "enabled": true,
@@ -285,6 +175,7 @@
           "view-users",
           "query-users",
           "query-groups",
+          "manage-groups",
           "view-clients",
           "manage-clients",
           "view-realm",
@@ -292,62 +183,7 @@
           "manage-realm",
           "manage-roles"
         ]
-      },
-      "groups": []
-    },
-    {
-      "username": "admin.tenanta@optrax.com",
-      "email": "admin.tenanta@optrax.com",
-      "firstName": "Admin",
-      "lastName": "Tenant A",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "tenant123",
-          "temporary": false
-        }
-      ],
-      "clientRoles": {},
-      "realmRoles": ["TENANT_ADMIN"],
-      "groups": ["/Tenant A/Administradores"]
-    },
-    {
-      "username": "operador.tenanta@optrax.com",
-      "email": "operador.tenanta@optrax.com",
-      "firstName": "Operador",
-      "lastName": "Tenant A",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "tenant123",
-          "temporary": false
-        }
-      ],
-      "clientRoles": {},
-      "realmRoles": [],
-      "groups": ["/Tenant A/Operadores"]
-    },
-    {
-      "username": "supervisor.tenantb@optrax.com",
-      "email": "supervisor.tenantb@optrax.com",
-      "firstName": "Supervisor",
-      "lastName": "Tenant B",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "tenant123",
-          "temporary": false
-        }
-      ],
-      "clientRoles": {},
-      "realmRoles": [],
-      "groups": ["/Tenant B/Supervisores"]
+      }
     }
   ]
 }

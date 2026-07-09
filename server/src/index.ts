@@ -14,6 +14,9 @@ import { defaultLimiter } from "./middleware/rate-limiter";
 // Base de datos
 import { checkDbConnection, pool } from "./db/client";
 
+// Bootstrap inicial
+import { bootstrapAdminUser } from "./services/bootstrap.service";
+
 // Rutas de autenticación (legacy session-based)
 import authRouter from "./auth/routes";
 
@@ -65,7 +68,6 @@ async function startServer() {
   let sessionStore: session.Store | undefined;
 
   if (env.NODE_ENV === "production") {
-    logger.info("Configurando Session Store persistente con PostgreSQL para producción...");
     const PgSession = require("connect-pg-simple")(session);
     sessionStore = new PgSession({
       pool: pool,
@@ -92,10 +94,10 @@ async function startServer() {
   );
 
   // Probar la conexión a la base de datos y crear tablas si no existen
-  logger.info("Probando conexión a PostgreSQL y migrando esquema...");
   const dbConnected = await checkDbConnection();
   if (dbConnected) {
-    logger.info("Conexión a PostgreSQL establecida con éxito.");
+    // Ejecutar el bootstrap de usuario administrador inicial
+    await bootstrapAdminUser();
   } else {
     logger.warn("No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
   }
@@ -129,10 +131,8 @@ async function startServer() {
 
   // 7. Integración con el Frontend (React + Vite / Estáticos)
   if (env.NODE_ENV === "production") {
-    logger.info("Modo PRODUCCIÓN: Sirviendo archivos estáticos...");
     serveStatic(app);
   } else {
-    logger.info("Modo DESARROLLO: Montando middleware de Vite...");
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
