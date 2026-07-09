@@ -34,8 +34,9 @@ services:
     environment:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
-      KC_PROXY: "edge" # Permite a Keycloak funcionar detrás del reverse proxy de Nginx
+      KC_PROXY_HEADERS: "xforwarded"   # <-- reemplaza a KC_PROXY: edge
+      KC_HOSTNAME: "auth.optrax.io"
+      KC_HTTP_RELATIVE_PATH: "/auth"
     ports:
       - "8080:8080"
     volumes:
