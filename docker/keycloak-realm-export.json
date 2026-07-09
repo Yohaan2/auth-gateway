@@ -3,7 +3,7 @@
   "realm": "optrax-realm",
   "enabled": true,
   "displayName": "Optrax Realm",
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": false,
   "registrationEmailAsUsername": true,
   "rememberMe": true,
@@ -72,15 +72,13 @@
       "serviceAccountsEnabled": false,
       "authorizationServicesEnabled": false,
       "redirectUris": [
-        "http://67.207.90.82/*",
-        "http://67.207.90.82:3000/*"
+        "https://auth.optrax.io/*"
       ],
       "webOrigins": [
-        "http://67.207.90.82",
-        "http://67.207.90.82:3000"
+        "https://auth.optrax.io"
       ],
-      "adminUrl": "http://67.207.90.82:3000",
-      "baseUrl": "http://67.207.90.82:3000",
+      "adminUrl": "https://auth.optrax.io",
+      "baseUrl": "https://auth.optrax.io",
       "defaultClientScopes": [
         "web-origins",
         "acr",
