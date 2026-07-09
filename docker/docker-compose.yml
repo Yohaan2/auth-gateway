@@ -28,15 +28,22 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.4
     container_name: auth-optrax-keycloak
-    command: start-dev --import-realm
+    command: start --import-realm
     env_file:
       - ../.env
     environment:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
-      KC_PROXY_HEADERS: "xforwarded"   # <-- reemplaza a KC_PROXY: edge
+      KC_PROXY_HEADERS: "xforwarded"
       KC_HOSTNAME: "auth.optrax.io"
       KC_HTTP_RELATIVE_PATH: "/auth"
+      KC_DB: "postgres"
+      KC_DB_URL: "jdbc:postgresql://postgres:5432/${KC_POSTGRES_DB}"
+      KC_DB_USERNAME: "${POSTGRES_USER}"
+      KC_DB_PASSWORD: "${POSTGRES_PASSWORD}"
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     volumes:
