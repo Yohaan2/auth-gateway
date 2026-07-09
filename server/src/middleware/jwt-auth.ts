@@ -58,9 +58,11 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
     const internalBase = env.KEYCLOAK_INTERNAL_URL || env.KEYCLOAK_URL;
     const issuer = `${internalBase}/realms/${env.KEYCLOAK_REALM}`;
     const { payload } = await jwtVerify<KeycloakTokenPayload>(token, getJWKS(), { issuer });
+    console.log('payload', payload)
     req.jwtPayload = payload;
     next();
   } catch (err: any) {
+    console.log('err', err)
     const msg = err?.code === "ERR_JWT_EXPIRED" ? "Token expirado." : "Token inválido.";
     return res.status(401).json({ error: "No autorizado", message: msg });
   }
