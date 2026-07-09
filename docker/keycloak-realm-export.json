@@ -3,7 +3,7 @@
   "realm": "optrax-realm",
   "enabled": true,
   "displayName": "Optrax Realm",
-  "sslRequired": "external",
+  "sslRequired": "none",
   "registrationAllowed": false,
   "registrationEmailAsUsername": true,
   "rememberMe": true,
