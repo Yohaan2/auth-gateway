@@ -433,9 +433,21 @@ class KeycloakAdminService {
    * Actualiza los atributos personalizados del usuario sin modificar otros campos.
    * Los atributos en Keycloak son Record<string, string[]>.
    */
-  updateUserAttributes(userId: string, attributes: Record<string, string[]>): Promise<void> {
+  async updateUserAttributes(userId: string, attributes: Record<string, string[]>): Promise<void> {
     // Se necesita el objeto completo del usuario para hacer el PUT sin sobreescribir otros campos
-    return this.req({ method: "PUT", url: `/users/${userId}`, data: { attributes } });
+    const user = await this.getUser(userId);
+    const updatedAttributes = {
+      ...(user.attributes ?? {}),
+      ...attributes,
+    };
+    return this.req({
+      method: "PUT",
+      url: `/users/${userId}`,
+      data: {
+        ...user,
+        attributes: updatedAttributes,
+      },
+    });
   }
 
   /**
