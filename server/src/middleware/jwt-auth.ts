@@ -55,7 +55,8 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
   const token = authHeader.slice(7);
 
   try {
-    const issuer = `${env.KEYCLOAK_URL}/realms/${env.KEYCLOAK_REALM}`;
+    const internalBase = env.KEYCLOAK_INTERNAL_URL || env.KEYCLOAK_URL;
+    const issuer = `${internalBase}/realms/${env.KEYCLOAK_REALM}`;
     const { payload } = await jwtVerify<KeycloakTokenPayload>(token, getJWKS(), { issuer });
     req.jwtPayload = payload;
     next();
