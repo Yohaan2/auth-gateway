@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Pencil,
@@ -15,6 +15,7 @@ import {
   X,
   CheckCircle2,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { tenantsApi, usersApi, type TenantView, type TenantMember, type KcUser } from "../api/admin-api";
@@ -458,14 +459,37 @@ function TenantCard({
   const [showDelete, setShowDelete] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [membersOffset, setMembersOffset] = useState(0);
+  const [allMembers, setAllMembers] = useState<TenantMember[]>([]);
+  const [hasMoreMembers, setHasMoreMembers] = useState(false);
 
-  const { data: membersData, refetch: refetchMembers } = useQuery({
-    queryKey: ["tenant-members", tenant.id],
-    queryFn: () => tenantsApi.getMembers(tenant.id, { max: 50 }),
+  const MEMBERS_PAGE = 5;
+
+  const { isFetching: membersFetching, refetch: refetchPage } = useQuery({
+    queryKey: ["tenant-members", tenant.id, membersOffset],
+    queryFn: async () => {
+      const result = await tenantsApi.getMembers(tenant.id, { first: membersOffset, max: MEMBERS_PAGE });
+      if (membersOffset === 0) {
+        setAllMembers(result.members);
+      } else {
+        setAllMembers((prev) => {
+          const ids = new Set(prev.map((m) => m.id));
+          return [...prev, ...result.members.filter((m) => !ids.has(m.id))];
+        });
+      }
+      setHasMoreMembers(result.hasMore);
+      return result;
+    },
     enabled: expanded,
   });
 
-  const members = membersData?.members ?? [];
+  const refetchMembers = () => {
+    setMembersOffset(0);
+    setAllMembers([]);
+    refetchPage();
+  };
+
+  const members = allMembers;
   const existingMemberIds = new Set(members.map((m) => m.id));
 
   const handleDelete = async () => {
@@ -531,7 +555,7 @@ function TenantCard({
               className="ml-1 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Users size={13} />
-              {expanded && membersData ? `${members.length} miembro${members.length !== 1 ? "s" : ""}` : "Miembros"}
+              {expanded && members.length > 0 ? `${members.length} miembro${members.length !== 1 ? "s" : ""}` : "Miembros"}
               {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
           </div>
@@ -569,27 +593,43 @@ function TenantCard({
                 )}
               </div>
             ) : (
-              <table className="min-w-full divide-y divide-gray-100">
-                <thead>
-                  <tr className="bg-gray-50/50">
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuario</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
-                    <th className="px-4 py-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {members.map((m) => (
-                    <MemberRow
-                      key={m.id}
-                      member={m}
-                      tenantId={tenant.id}
-                      allTenants={allTenants}
-                      isAdmin={isAdmin}
-                      onChanged={refetchMembers}
-                    />
-                  ))}
-                </tbody>
-              </table>
+              <>
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead>
+                    <tr className="bg-gray-50/50">
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuario</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                      <th className="px-4 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {members.map((m) => (
+                      <MemberRow
+                        key={m.id}
+                        member={m}
+                        tenantId={tenant.id}
+                        allTenants={allTenants}
+                        isAdmin={isAdmin}
+                        onChanged={refetchMembers}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+
+                {(hasMoreMembers || membersFetching) && (
+                  <div className="px-5 py-2.5 border-t border-gray-100 flex justify-center">
+                    <button
+                      onClick={() => setMembersOffset((o) => o + MEMBERS_PAGE)}
+                      disabled={membersFetching}
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      {membersFetching
+                        ? <><Loader2 size={12} className="animate-spin" />Cargando...</>
+                        : `Ver ${MEMBERS_PAGE} más`}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -621,20 +661,53 @@ function TenantCard({
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+const TENANTS_PAGE = 15;
+
 export default function Tenants() {
   const { isAdmin } = useRoles();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<TenantView | null>(null);
   const [search, setSearch] = useState("");
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const {
+    data,
+    isLoading,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteQuery({
     queryKey: ["tenants", search],
-    queryFn: () => tenantsApi.list({ max: 50, search: search || undefined }),
+    queryFn: ({ pageParam = 0 }) =>
+      tenantsApi.list({ first: pageParam as number, max: TENANTS_PAGE, search: search || undefined }),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.reduce((sum, p) => sum + p.tenants.length, 0);
+    },
+    initialPageParam: 0,
   });
 
-  const tenants = data?.tenants ?? [];
-  const total = data?.total ?? 0;
+  const tenants = data?.pages.flatMap((p) => p.tenants) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
+
+  // Disparar siguiente página al llegar al sentinel
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "150px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSaved = () => {
     qc.invalidateQueries({ queryKey: ["tenants"] });
@@ -731,6 +804,16 @@ export default function Tenants() {
               onDeleted={handleSaved}
             />
           ))}
+
+          {/* Sentinel: al llegar aquí se carga la siguiente página */}
+          <div ref={sentinelRef} />
+
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center py-4 gap-2 text-gray-400">
+              <Loader2 size={15} className="animate-spin" />
+              <span className="text-sm">Cargando más tenants...</span>
+            </div>
+          )}
         </div>
       )}
 
