@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, User, Shield, Mail, ChevronDown, Loader2, CheckCircle2, Building2 } from "lucide-react";
-import { usersApi, templatesApi, tenantsApi, type AccessTemplate, type TenantView } from "../../api/admin-api";
+import { usersApi, templatesApi, tenantsApi, type AccessTemplate } from "../../api/admin-api";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -62,10 +62,10 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
   });
 
   const { data: tenantsData, isLoading: loadingTenants } = useQuery({
-    queryKey: ["tenants", "all"],
-    queryFn: () => tenantsApi.list({ first: 0, max: 200 }),
+    queryKey: ["tenants-picker"],
+    queryFn: () => tenantsApi.list({ max: 50 }),
   });
-  const availableTenants: TenantView[] = tenantsData?.tenants ?? [];
+  const availableTenants = tenantsData?.tenants ?? [];
 
   const activeTemplates = templates.filter((t: AccessTemplate) => t.active);
   const selectedTemplate = activeTemplates.find((t: AccessTemplate) => t.id === form.templateId);
@@ -229,15 +229,11 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
                       </option>
                       {availableTenants.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.name}
-                          {t.description ? ` — ${t.description}` : ""}
+                          {t.name}{t.description ? ` — ${t.description}` : ""}
                         </option>
                       ))}
                     </select>
-                    <ChevronDown
-                      size={13}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                    />
+                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   </div>
                   {form.tenantId && (
                     <div className="mt-2 p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center gap-2">

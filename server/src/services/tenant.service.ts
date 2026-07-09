@@ -93,17 +93,18 @@ class TenantService {
 
   // ─── Listado paginado ─────────────────────────────────────────────────────
 
-  async listTenants(params: { first?: number; max?: number } = {}): Promise<{
+  async listTenants(params: { first?: number; max?: number; search?: string } = {}): Promise<{
     tenants: TenantView[];
     total: number;
     hasMore: boolean;
   }> {
     const first = params.first ?? 0;
     const max = params.max ?? DEFAULT_PAGE_SIZE;
+    const search = params.search?.trim() || undefined;
 
     const [kcGroups, countResult, dbRows] = await Promise.all([
-      kcAdmin.listGroups({ first, max }),
-      kcAdmin.countGroups(),
+      kcAdmin.listGroups({ first, max, ...(search ? { search } : {}) }),
+      kcAdmin.countGroups(search ? { search } : {}),
       db.select().from(tenants),
     ]);
 
