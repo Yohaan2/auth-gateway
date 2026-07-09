@@ -72,15 +72,15 @@
       "serviceAccountsEnabled": false,
       "authorizationServicesEnabled": false,
       "redirectUris": [
-        "http://localhost/*",
-        "http://localhost:3000/*"
+        "http://67.207.90.82/*",
+        "http://67.207.90.82:3000/*"
       ],
       "webOrigins": [
-        "http://localhost",
-        "http://localhost:3000"
+        "http://67.207.90.82",
+        "http://67.207.90.82:3000"
       ],
-      "adminUrl": "http://localhost:3000",
-      "baseUrl": "http://localhost:3000",
+      "adminUrl": "http://67.207.90.82:3000",
+      "baseUrl": "http://67.207.90.82:3000",
       "defaultClientScopes": [
         "web-origins",
         "acr",
