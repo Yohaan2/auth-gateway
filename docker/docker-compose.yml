@@ -33,16 +33,18 @@ services:
       - ../.env
     environment:
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT: "true"
       KC_PROXY_HEADERS: "xforwarded"
       KC_HOSTNAME: "auth.optrax.io"
+      KC_HOSTNAME_URL: "https://auth.optrax.io/auth"
+      KC_HOSTNAME_ADMIN_URL: "https://auth.optrax.io/auth"
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # No exponemos el puerto 8080 al exterior para obligar a usar el puerto 443 (HTTPS) de Nginx
+    # Keycloak sigue siendo accesible internamente dentro de la red Docker en el puerto 8080
     volumes:
       # Si se desea importar un Realm pre-configurado de prueba
       - ./keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
