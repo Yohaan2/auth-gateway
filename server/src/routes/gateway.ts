@@ -100,7 +100,13 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
       const { data } = await axios.post(
         `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
         params.toString(),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": new URL(env.KEYCLOAK_URL).host,
+          },
+        }
       );
       kcResponse = data;
     } catch (err: any) {
