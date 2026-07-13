@@ -16,6 +16,7 @@ import Roles from "./pages/Roles";
 import Modules from "./pages/Modules";
 import Templates from "./pages/Templates";
 import Tenants from "./pages/Tenants";
+import AuditLogs from "./pages/AuditLogs";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -133,6 +134,7 @@ function AppContent() {
           <Route path="/modules" element={<Modules />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/tenants" element={<Tenants />} />
+          <Route path="/audit-logs" element={<AuditLogs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

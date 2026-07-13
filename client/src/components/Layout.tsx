@@ -12,6 +12,7 @@ import {
   X,
   LayoutTemplate,
   Building2,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 import { useRoles } from "../auth/useRoles";
@@ -25,6 +26,7 @@ const NAV_ITEMS: { path: string; label: string; icon: typeof LayoutDashboard; pe
   { path: "/modules", label: "Módulos", icon: AppWindow, permission: "iam:manage_settings" },
   { path: "/templates", label: "Plantillas de Acceso", icon: LayoutTemplate, permission: "iam:manage_templates" },
   { path: "/tenants", label: "Tenants", icon: Building2, permission: "iam:manage_tenants" },
+  { path: "/audit-logs", label: "Auditoría", icon: ClipboardList, permission: "iam:view_audit" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

@@ -12,7 +12,7 @@
 import { Router } from "express";
 import axios from "axios";
 import { db } from "../db/client";
-import { gatewayClients, iamUsers } from "../db/schema";
+import { gatewayClients, iamUsers, auditLogs } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
 import { sensitiveLimiter } from "../middleware/rate-limiter";
@@ -158,6 +158,24 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
         tenant,
       },
     });
+
+    // Registrar actividad de login en auditoría (no bloquea la respuesta)
+    db.insert(auditLogs).values({
+      actorSub: username,
+      actorEmail: (payload.email as string) ?? null,
+      action: "gateway_login",
+      entity: "gateway_session",
+      entityId: clientId,
+      detail: {
+        clientId,
+        clientName: gwClient.name ?? clientId,
+        username: payload.preferred_username,
+        roles: clientRoles,
+        realmRoles: businessRoles,
+        tenant,
+        ip: req.ip ?? req.socket?.remoteAddress ?? null,
+      },
+    }).catch((err) => console.error("⚠️  Error al registrar gateway_login en auditoría:", err));
   } catch (err) {
     next(err);
   }
