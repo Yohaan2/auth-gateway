@@ -16,9 +16,9 @@ router.use(Permissions(IAM_PERMISSIONS.MANAGE_TEMPLATES));
 
 const roleSchema = z.object({
   roleName: z.string().min(1),
-  roleId: z.string().optional(),
-  isClientRole: z.boolean().optional(),
-  clientId: z.string().optional(),
+  roleId: z.string().nullish(),
+  isClientRole: z.boolean().nullish(),
+  clientId: z.string().nullish(),
 });
 
 const groupSchema = z.object({

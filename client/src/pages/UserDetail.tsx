@@ -244,18 +244,26 @@ export default function UserDetail() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               {[
-                { key: "username", label: "Username" },
+                { key: "username", label: "Username", disabled: true },
                 { key: "email", label: "Email", type: "email" },
                 { key: "firstName", label: "Nombre" },
                 { key: "lastName", label: "Apellido" },
-              ].map(({ key, label, type = "text" }) => (
+              ].map(({ key, label, type = "text", disabled = false }) => (
                 <div key={key}>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {label}
+                    {disabled && <span className="ml-1.5 text-gray-400 font-normal">(no editable)</span>}
+                  </label>
                   <input
                     type={type}
                     value={editForm[key]}
                     onChange={(e) => setEditForm((f) => ({ ...f!, [key]: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    disabled={disabled}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+                      disabled
+                        ? "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"
+                        : "border-gray-200"
+                    }`}
                   />
                 </div>
               ))}
