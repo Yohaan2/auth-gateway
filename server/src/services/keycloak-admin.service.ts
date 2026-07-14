@@ -288,7 +288,22 @@ class KeycloakAdminService {
       headers: { Authorization: `Bearer ${token}` },
     });
     const location = resp.headers["location"] as string;
-    return location ? location.split("/").pop()! : "";
+    const clientId = location ? location.split("/").pop()! : "";
+
+    // Asignar automáticamente los Client Scopes necesarios al nuevo cliente
+    // para que sus tokens incluyan datos del usuario, roles y claims IAM.
+    const defaultScopes = ["optrax-iam", "profile", "email", "roles", "web-origins", "acr"];
+    if (clientId) {
+      for (const scopeName of defaultScopes) {
+        try {
+          await this.assignClientScope(clientId, scopeName);
+        } catch (err) {
+          console.warn(`⚠️  No se pudo asignar el Client Scope ${scopeName} al cliente ${clientId}:`, err);
+        }
+      }
+    }
+
+    return clientId;
   }
 
   updateClient(id: string, payload: UpdateClientPayload): Promise<void> {
@@ -447,6 +462,30 @@ class KeycloakAdminService {
         ...user,
         attributes: updatedAttributes,
       },
+    });
+  }
+
+  /**
+   * Asigna un Client Scope (por nombre) a un cliente como default scope.
+   * Esto hace que el cliente herede los mappers del scope.
+   */
+  async assignClientScope(clientUuid: string, scopeName: string): Promise<void> {
+    // 1. Obtener todos los client scopes del realm
+    const allScopes = await this.req<Array<{ id: string; name: string }>>({
+      method: "GET",
+      url: `/client-scopes`,
+    });
+
+    // 2. Buscar el scope por nombre
+    const scope = allScopes.find((s) => s.name === scopeName);
+    if (!scope) {
+      throw new Error(`Client Scope "${scopeName}" no encontrado en el realm.`);
+    }
+
+    // 3. Asignar el scope al cliente como default
+    return this.req({
+      method: "PUT",
+      url: `/clients/${clientUuid}/default-client-scopes/${scope.id}`,
     });
   }
 

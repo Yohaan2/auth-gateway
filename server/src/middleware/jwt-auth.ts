@@ -19,6 +19,23 @@ export interface KeycloakTokenPayload extends JWTPayload {
    * Requiere el mapper "groups" (oidc-group-membership-mapper) en el cliente Keycloak.
    */
   groups?: string[];
+  /**
+   * Tenant del usuario (atributo del usuario en Keycloak).
+   * Mapeado por el Client Scope optrax-iam.
+   */
+  tenant?: string;
+  /**
+   * Claims personalizados de la plantilla de acceso, serializados como JSON.
+   * Ejemplo: "{\"department\":\"sales\",\"level\":\"2\"}"
+   * Mapeado por el Client Scope optrax-iam.
+   */
+  iam_claims?: string;
+  /**
+   * Permisos finos de la plantilla de acceso, serializados como JSON array.
+   * Ejemplo: "[{\"resource\":\"invoices\",\"action\":\"read\",\"effect\":\"allow\"}]"
+   * Mapeado por el Client Scope optrax-iam.
+   */
+  iam_permissions?: string;
 }
 
 declare global {
@@ -83,6 +100,36 @@ export function requireRole(...roles: string[]) {
 // Helpers de roles del panel
 export const requireAdmin = requireRole(env.KEYCLOAK_ADMIN_ROLE);
 export const requireAdminOrViewer = requireRole(env.KEYCLOAK_ADMIN_ROLE, env.KEYCLOAK_VIEWER_ROLE);
+
+// ─── Helpers para parsear claims y permisos del token ────────────────────────
+
+/**
+ * Parsea los claims personalizados del token (iam_claims).
+ * Devuelve un objeto con los claims o null si no hay.
+ */
+export function parseIamClaims(payload?: KeycloakTokenPayload): Record<string, string> | null {
+  if (!payload?.iam_claims) return null;
+  try {
+    return JSON.parse(payload.iam_claims);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parsea los permisos del token (iam_permissions).
+ * Devuelve un array de permisos o null si no hay.
+ */
+export function parseIamPermissions(
+  payload?: KeycloakTokenPayload
+): Array<{ resource: string; action: string; effect: string }> | null {
+  if (!payload?.iam_permissions) return null;
+  try {
+    return JSON.parse(payload.iam_permissions);
+  } catch {
+    return null;
+  }
+}
 
 // ─── Guard de tenant ─────────────────────────────────────────────────────────
 

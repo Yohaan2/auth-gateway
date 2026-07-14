@@ -93,6 +93,7 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
       client_secret: gwClient.clientSecret,
       username,
       password,
+      scope: "openid profile email optrax-iam",
     });
 
     let kcResponse: any;
@@ -204,6 +205,7 @@ router.post("/refresh", async (req, res, next) => {
       client_id: gwClient.clientId,
       client_secret: gwClient.clientSecret,
       refresh_token,
+      scope: "openid profile email optrax-iam",
     });
 
     try {
