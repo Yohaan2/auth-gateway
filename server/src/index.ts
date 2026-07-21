@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import session from "express-session";
 import cors from "cors";
+import "./tracing";
 
 // Configuración y variables de entorno
 import { env } from "./config/env";
