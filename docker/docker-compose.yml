@@ -149,8 +149,6 @@ services:
       - "9187:9187"
     env_file:
       - ../.env
-    environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
     networks:
       - optrax-network
 
