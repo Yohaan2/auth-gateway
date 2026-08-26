@@ -256,7 +256,15 @@ router.post("/refresh", async (req, res, next) => {
       });
     } catch (err: any) {
       if (err.response?.status === 400) {
-        return res.status(401).json({ error: "Sesión expirada. Inicia sesión de nuevo." });
+        console.warn(
+          "[gateway/refresh] Keycloak rechazó el refresh_token:",
+          JSON.stringify(err.response?.data)
+        );
+        return res.status(401).json({
+          error: "Sesión expirada. Inicia sesión de nuevo.",
+          keycloak_error: err.response?.data?.error,
+          keycloak_error_description: err.response?.data?.error_description,
+        });
       }
       throw err;
     }
