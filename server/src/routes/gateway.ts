@@ -212,7 +212,19 @@ router.post("/refresh", async (req, res, next) => {
       const { data } = await axios.post(
         `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
         params.toString(),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            // Igual que en /login: si KEYCLOAK_INTERNAL_URL apunta a un host/puerto
+            // interno (ej. http://auth.optrax.io:8080), sin estos headers Keycloak
+            // calcula el issuer usando esa URL interna, que no coincide con el
+            // issuer público con el que se emitió el token original. Resultado:
+            // Keycloak rechaza el refresh con "Invalid token issuer" (invalid_grant)
+            // en TODOS los refresh, no solo algunos.
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": new URL(env.KEYCLOAK_URL).host,
+          },
+        }
       );
 
       const payload = decodePayload(data.access_token);
@@ -298,7 +310,17 @@ router.post("/logout", async (req, res, next) => {
         .post(
           `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/logout`,
           params.toString(),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              // Mismo fix que en /login y /refresh: sin esto Keycloak calcula
+              // el issuer con la URL interna y rechaza la revocación del
+              // refresh_token por "Invalid token issuer" (el error queda
+              // oculto porque abajo se ignoran los errores del logout).
+              "X-Forwarded-Proto": "https",
+              "X-Forwarded-Host": new URL(env.KEYCLOAK_URL).host,
+            },
+          }
         )
         .catch(() => {
           // Ignorar errores del logout — igual responder OK
