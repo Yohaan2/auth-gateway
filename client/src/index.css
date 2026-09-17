@@ -1,3 +1,60 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ponytail: overrides globales para dark mode en pantallas admin sin tocar cada card */
+@layer base {
+  .dark .bg-white {
+    @apply bg-gray-800;
+  }
+  .dark .bg-gray-50 {
+    @apply bg-gray-900/60;
+  }
+  .dark .bg-gray-50\/50 {
+    background-color: rgb(17 24 39 / 0.4);
+  }
+  .dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+  .dark .text-gray-800 {
+    @apply text-gray-200;
+  }
+  .dark .text-gray-700 {
+    @apply text-gray-300;
+  }
+  .dark .text-gray-600 {
+    @apply text-gray-300;
+  }
+  .dark .text-gray-500 {
+    color: rgb(156 163 175);
+  }
+  .dark .border-gray-100 {
+    @apply border-gray-700;
+  }
+  .dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+  .dark .border-gray-300 {
+    @apply border-gray-600;
+  }
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(55 65 81);
+  }
+  .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(55 65 81);
+  }
+  .dark .hover\:bg-gray-50:hover {
+    @apply bg-gray-700/50;
+  }
+  .dark .hover\:bg-gray-100:hover {
+    @apply bg-gray-700/50;
+  }
+  .dark input.bg-white,
+  .dark select.bg-white,
+  .dark textarea.bg-white {
+    @apply bg-gray-800 text-gray-100 border-gray-600;
+  }
+  .dark .shadow-sm {
+    @apply shadow-none;
+  }
+}
