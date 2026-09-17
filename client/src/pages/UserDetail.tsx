@@ -578,7 +578,7 @@ export default function UserDetail() {
       {changeTemplateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setChangeTemplateOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <div className="ui-modal-panel w-full max-w-md p-6 space-y-4">
             <h3 className="text-sm font-bold text-gray-900">Cambiar plantilla de acceso</h3>
             <p className="text-xs text-gray-500">
               Se desasignarán los roles/grupos de la plantilla actual y se aplicarán los de la nueva.

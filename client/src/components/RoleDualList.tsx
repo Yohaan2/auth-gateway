@@ -56,7 +56,7 @@ export default function RoleDualList({ allRoles, assignedRoles, onChange, disabl
     selected: Set<string>;
     onToggle: (id: string) => void;
   }) => (
-    <div className="flex-1 border border-gray-200 rounded-lg overflow-y-auto max-h-56 bg-white">
+    <div className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg overflow-y-auto max-h-56 bg-white dark:bg-gray-800">
       {roles.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6">Sin roles</p>
       ) : (
@@ -66,10 +66,10 @@ export default function RoleDualList({ allRoles, assignedRoles, onChange, disabl
             type="button"
             disabled={disabled}
             onClick={() => onToggle(role.id)}
-            className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 last:border-0 transition-colors ${
+            className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors ${
               selected.has(role.id)
-                ? "bg-indigo-50 text-indigo-700 font-medium"
-                : "text-gray-700 hover:bg-gray-50"
+                ? "bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
             }`}
           >
             <span className="font-medium">{role.name}</span>
@@ -115,7 +115,7 @@ export default function RoleDualList({ allRoles, assignedRoles, onChange, disabl
           disabled={disabled || leftSelected.size === 0}
           onClick={() => moveRight(leftSelected)}
           title="Asignar seleccionados"
-          className="p-1.5 rounded border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronRight size={14} />
         </button>
@@ -124,7 +124,7 @@ export default function RoleDualList({ allRoles, assignedRoles, onChange, disabl
           disabled={disabled || available.length === 0}
           onClick={() => moveRight(new Set(available.map((r) => r.id)))}
           title="Asignar todos"
-          className="p-1.5 rounded border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronsRight size={14} />
         </button>
@@ -133,7 +133,7 @@ export default function RoleDualList({ allRoles, assignedRoles, onChange, disabl
           disabled={disabled || rightSelected.size === 0}
           onClick={() => moveLeft(rightSelected)}
           title="Quitar seleccionados"
-          className="p-1.5 rounded border border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronLeft size={14} />
         </button>
@@ -142,7 +142,7 @@ export default function RoleDualList({ allRoles, assignedRoles, onChange, disabl
           disabled={disabled || assignedRoles.length === 0}
           onClick={() => moveLeft(new Set(assignedRoles.map((r) => r.id)))}
           title="Quitar todos"
-          className="p-1.5 rounded border border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronsLeft size={14} />
         </button>

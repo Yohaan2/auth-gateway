@@ -36,7 +36,7 @@ function RoleFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+      <div className="ui-modal-panel w-full max-w-sm mx-4 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">
           {initial ? "Editar rol" : "Nuevo rol del Realm"}
         </h2>

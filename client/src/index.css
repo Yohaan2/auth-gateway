@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ponytail: overrides globales para dark mode en pantallas admin sin tocar cada card */
+/* Dark mode: superficies, formularios, tablas y modales del panel admin */
 @layer base {
   .dark .bg-white {
     @apply bg-gray-800;
@@ -11,8 +11,12 @@
     @apply bg-gray-900/60;
   }
   .dark .bg-gray-50\/50 {
-    background-color: rgb(17 24 39 / 0.4);
+    background-color: rgb(17 24 39 / 0.55);
   }
+  .dark .bg-gray-100 {
+    background-color: rgb(55 65 81);
+  }
+
   .dark .text-gray-900 {
     @apply text-gray-100;
   }
@@ -28,6 +32,10 @@
   .dark .text-gray-500 {
     color: rgb(156 163 175);
   }
+  .dark .text-gray-400 {
+    color: rgb(156 163 175);
+  }
+
   .dark .border-gray-100 {
     @apply border-gray-700;
   }
@@ -37,24 +45,86 @@
   .dark .border-gray-300 {
     @apply border-gray-600;
   }
-  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
-    border-color: rgb(55 65 81);
-  }
+
+  .dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
   .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
     border-color: rgb(55 65 81);
   }
-  .dark .hover\:bg-gray-50:hover {
-    @apply bg-gray-700/50;
-  }
+
+  .dark .hover\:bg-gray-50:hover,
   .dark .hover\:bg-gray-100:hover {
     @apply bg-gray-700/50;
   }
-  .dark input.bg-white,
-  .dark select.bg-white,
-  .dark textarea.bg-white {
-    @apply bg-gray-800 text-gray-100 border-gray-600;
+
+  .dark .hover\:bg-indigo-50:hover {
+    background-color: rgb(49 46 129 / 0.28);
   }
-  .dark .shadow-sm {
+  .dark .hover\:bg-red-50:hover {
+    background-color: rgb(127 29 29 / 0.28);
+  }
+
+  .dark .bg-indigo-50 {
+    background-color: rgb(49 46 129 / 0.35);
+  }
+  .dark .text-indigo-700 {
+    color: rgb(165 180 252);
+  }
+  .dark .text-indigo-600 {
+    color: rgb(129 140 248);
+  }
+
+  .dark .shadow-sm,
+  .dark .shadow-md,
+  .dark .shadow-xl,
+  .dark .shadow-2xl {
     @apply shadow-none;
+  }
+
+  /* Inputs, selects, textareas (incl. buscadores sin bg-white explícito) */
+  .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="hidden"]):not([type="file"]),
+  .dark select,
+  .dark textarea {
+    background-color: rgb(31 41 55);
+    color: rgb(243 244 246);
+    border-color: rgb(75 85 99);
+  }
+
+  .dark input:disabled,
+  .dark select:disabled,
+  .dark textarea:disabled,
+  .dark input.disabled\:bg-gray-50:disabled {
+    background-color: rgb(17 24 39 / 0.85);
+    color: rgb(156 163 175);
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(107 114 128);
+  }
+
+  .dark select option {
+    background-color: rgb(31 41 55);
+    color: rgb(243 244 246);
+  }
+
+  .dark input[type="checkbox"],
+  .dark input[type="radio"] {
+    border-color: rgb(107 114 128);
+    background-color: rgb(31 41 55);
+  }
+
+  /* Recharts (Dashboard) */
+  .dark .recharts-cartesian-axis-tick-value {
+    fill: rgb(156 163 175);
+  }
+  .dark .recharts-cartesian-grid line {
+    stroke: rgb(55 65 81);
+  }
+}
+
+@layer components {
+  .ui-modal-panel {
+    @apply relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700;
   }
 }
