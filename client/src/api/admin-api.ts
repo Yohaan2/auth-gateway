@@ -96,30 +96,6 @@ export const dashboardApi = {
   getStats: () => api.get<DashboardStats>("/dashboard").then((r) => r.data),
 };
 
-// ─── Auditoría ────────────────────────────────────────────────────────────────
-
-export interface AuditLogEntry {
-  id: string;
-  actorSub: string;
-  actorEmail: string | null;
-  action: string;
-  entity: string;
-  entityId: string | null;
-  detail: Record<string, unknown> | null;
-  timestamp: string;
-}
-
-export interface ListAuditParams {
-  first?: number;
-  max?: number;
-  search?: string;
-}
-
-export const auditApi = {
-  list: (params: ListAuditParams = {}) =>
-    api.get<{ logs: AuditLogEntry[]; total: number }>("/audit", { params }).then((r) => r.data),
-};
-
 // ─── Usuarios ─────────────────────────────────────────────────────────────────
 
 export interface ListUsersParams {
@@ -478,6 +454,40 @@ export interface IamMeResponse {
 
 export const iamApi = {
   me: () => iamApiClient.get<IamMeResponse>("/me").then((r) => r.data),
+};
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  actorSub: string;
+  actorEmail: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  detail: Record<string, unknown> | null;
+  timestamp: string;
+}
+
+export interface AuditLogsListResponse {
+  logs: AuditLogEntry[];
+  total: number;
+}
+
+export interface AuditLogsParams {
+  first?: number;
+  max?: number;
+  search?: string;
+  action?: string;
+  entity?: string;
+  actorSub?: string;
+  from?: string;
+  to?: string;
+}
+
+export const auditLogsApi = {
+  list: (params: AuditLogsParams = {}) =>
+    api.get<AuditLogsListResponse>("/audit-logs", { params }).then((r) => r.data),
 };
 
 export default api;

@@ -5,6 +5,7 @@ import {
   accessTemplates,
   templateRoles,
   templateClaims,
+  templatePermissions,
 } from "../db/schema";
 import { kcAdmin } from "./keycloak-admin.service";
 import { logAudit, type AuditEntry } from "../audit/audit.service";
@@ -306,9 +307,10 @@ class ProvisioningService {
     tenant?: string
   ): Promise<void> {
     // Cargar todos los elementos de la plantilla en paralelo
-    const [roles, claims] = await Promise.all([
+    const [roles, claims, permissions] = await Promise.all([
       db.select().from(templateRoles).where(eq(templateRoles.templateId, templateId)),
       db.select().from(templateClaims).where(eq(templateClaims.templateId, templateId)),
+      db.select().from(templatePermissions).where(eq(templatePermissions.templateId, templateId)),
     ]);
 
     // ── Si hay tenant, intentar agregar al grupo de tenant en Keycloak ────────
@@ -373,14 +375,28 @@ class ProvisioningService {
     // ── Establecer atributos/claims de la plantilla ───────────────────────────
     const attributes: Record<string, string[]> = {};
 
-    // Claims de la plantilla
-    for (const claim of claims) {
-      attributes[claim.claimKey] = [claim.claimValue];
-    }
-
     // Tenant como atributo
     if (tenant) {
       attributes["tenant"] = [tenant];
+    }
+
+    // Claims de la plantilla serializados como JSON
+    if (claims.length > 0) {
+      const claimsObj = claims.reduce<Record<string, string>>((acc, c) => {
+        acc[c.claimKey] = c.claimValue;
+        return acc;
+      }, {});
+      attributes["iam_claims"] = [JSON.stringify(claimsObj)];
+    }
+
+    // Permisos de la plantilla serializados como JSON
+    if (permissions.length > 0) {
+      const permissionsArray = permissions.map((p) => ({
+        resource: p.resource,
+        action: p.action,
+        effect: p.effect ?? "allow",
+      }));
+      attributes["iam_permissions"] = [JSON.stringify(permissionsArray)];
     }
 
     if (Object.keys(attributes).length > 0) {

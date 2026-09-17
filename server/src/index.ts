@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import session from "express-session";
 import cors from "cors";
+import "./tracing";
 
 // Configuración y variables de entorno
 import { env } from "./config/env";
@@ -27,7 +28,7 @@ import rolesRouter from "./routes/roles";
 import clientsRouter from "./routes/clients";
 import templatesRouter from "./routes/templates";
 import tenantsRouter from "./routes/tenants";
-import auditRouter from "./routes/audit";
+import auditLogsRouter from "./routes/audit-logs";
 
 // Módulo IAM — Fase 1: roles administrativos, RBAC y endpoint /me
 import iamRouter from "./routes/iam";
@@ -113,7 +114,7 @@ async function startServer() {
   app.use("/api/admin/clients", clientsRouter);
   app.use("/api/admin/templates", templatesRouter);
   app.use("/api/admin/tenants", tenantsRouter);
-  app.use("/api/admin/audit", auditRouter);
+  app.use("/api/admin/audit-logs", auditLogsRouter);
   app.use("/api/admin/gateway/clients", gatewayAdminRouter);
 
   // Módulo IAM — Fase 1 (roles administrativos globales + RBAC)

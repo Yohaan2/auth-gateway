@@ -23,14 +23,14 @@ const envSchema = z.object({
 
   // Keycloak — URL pública (para el navegador) e interna (para llamadas backend)
   KEYCLOAK_URL: z.string().url(),
-  KEYCLOAK_INTERNAL_URL: z.string().url().optional(),
+  KEYCLOAK_INTERNAL_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional()),
   KEYCLOAK_REALM: z.string(),
 
   // Auth Manager Client (flujo legacy de sesión)
   KEYCLOAK_CLIENT_ID: z.string(),
   KEYCLOAK_CLIENT_SECRET: z.string(),
   KEYCLOAK_REDIRECT_URI: z.string().url(),
-  KEYCLOAK_POST_LOGOUT_REDIRECT_URI: z.string().url().optional(),
+  KEYCLOAK_POST_LOGOUT_REDIRECT_URI: z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional()),
 
   // Service Account — usado por el backend para llamar a la Admin REST API
   KEYCLOAK_SA_CLIENT_ID: z.string(),

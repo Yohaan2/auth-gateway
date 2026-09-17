@@ -12,9 +12,10 @@ export type AuditAction =
   | "create_client_role" | "update_client_role" | "delete_client_role"
   | "create_template" | "update_template" | "delete_template"
   | "create_tenant" | "update_tenant" | "delete_tenant"
-  | "add_tenant_member" | "update_tenant_member_role" | "remove_tenant_member" | "provision_user" | "change_user_template" | "reapply_user_template" | "sync_user" | "send_activation_email";
+  | "add_tenant_member" | "update_tenant_member_role" | "remove_tenant_member" | "provision_user" | "change_user_template" | "reapply_user_template" | "sync_user" | "send_activation_email"
+  | "gateway_login";
 
-export type AuditEntity = "user" | "role" | "client" | "client_role" | "session" | "template" | "tenant" | "tenant_member" | "iam_user";
+export type AuditEntity = "user" | "role" | "client" | "client_role" | "session" | "template" | "tenant" | "tenant_member" | "iam_user" | "gateway_session";
 
 export interface AuditEntry {
   actor: KeycloakTokenPayload;

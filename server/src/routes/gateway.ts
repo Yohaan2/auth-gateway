@@ -12,7 +12,7 @@
 import { Router } from "express";
 import axios from "axios";
 import { db } from "../db/client";
-import { gatewayClients, iamUsers } from "../db/schema";
+import { gatewayClients, iamUsers, auditLogs } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
 import { sensitiveLimiter } from "../middleware/rate-limiter";
@@ -93,6 +93,7 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
       client_secret: gwClient.clientSecret,
       username,
       password,
+      scope: "openid profile email optrax-iam",
     });
 
     let kcResponse: any;
@@ -100,7 +101,13 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
       const { data } = await axios.post(
         `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
         params.toString(),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": new URL(env.KEYCLOAK_URL).host,
+          },
+        }
       );
       kcResponse = data;
     } catch (err: any) {
@@ -152,6 +159,24 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
         tenant,
       },
     });
+
+    // Registrar actividad de login en auditoría (no bloquea la respuesta)
+    db.insert(auditLogs).values({
+      actorSub: username,
+      actorEmail: (payload.email as string) ?? null,
+      action: "gateway_login",
+      entity: "gateway_session",
+      entityId: clientId,
+      detail: {
+        clientId,
+        clientName: gwClient.name ?? clientId,
+        username: payload.preferred_username,
+        roles: clientRoles,
+        realmRoles: businessRoles,
+        tenant,
+        ip: req.ip ?? req.socket?.remoteAddress ?? null,
+      },
+    }).catch((err) => console.error("⚠️  Error al registrar gateway_login en auditoría:", err));
   } catch (err) {
     next(err);
   }
@@ -180,13 +205,26 @@ router.post("/refresh", async (req, res, next) => {
       client_id: gwClient.clientId,
       client_secret: gwClient.clientSecret,
       refresh_token,
+      scope: "openid profile email optrax-iam",
     });
 
     try {
       const { data } = await axios.post(
         `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
         params.toString(),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            // Igual que en /login: si KEYCLOAK_INTERNAL_URL apunta a un host/puerto
+            // interno (ej. http://auth.optrax.io:8080), sin estos headers Keycloak
+            // calcula el issuer usando esa URL interna, que no coincide con el
+            // issuer público con el que se emitió el token original. Resultado:
+            // Keycloak rechaza el refresh con "Invalid token issuer" (invalid_grant)
+            // en TODOS los refresh, no solo algunos.
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": new URL(env.KEYCLOAK_URL).host,
+          },
+        }
       );
 
       const payload = decodePayload(data.access_token);
@@ -230,7 +268,15 @@ router.post("/refresh", async (req, res, next) => {
       });
     } catch (err: any) {
       if (err.response?.status === 400) {
-        return res.status(401).json({ error: "Sesión expirada. Inicia sesión de nuevo." });
+        console.warn(
+          "[gateway/refresh] Keycloak rechazó el refresh_token:",
+          JSON.stringify(err.response?.data)
+        );
+        return res.status(401).json({
+          error: "Sesión expirada. Inicia sesión de nuevo.",
+          keycloak_error: err.response?.data?.error,
+          keycloak_error_description: err.response?.data?.error_description,
+        });
       }
       throw err;
     }
@@ -264,7 +310,17 @@ router.post("/logout", async (req, res, next) => {
         .post(
           `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/logout`,
           params.toString(),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              // Mismo fix que en /login y /refresh: sin esto Keycloak calcula
+              // el issuer con la URL interna y rechaza la revocación del
+              // refresh_token por "Invalid token issuer" (el error queda
+              // oculto porque abajo se ignoran los errores del logout).
+              "X-Forwarded-Proto": "https",
+              "X-Forwarded-Host": new URL(env.KEYCLOAK_URL).host,
+            },
+          }
         )
         .catch(() => {
           // Ignorar errores del logout — igual responder OK

@@ -14,6 +14,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_optrax}"]
       interval: 5s
@@ -33,16 +34,18 @@ services:
       - ../.env
     environment:
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT: "true"
       KC_PROXY_HEADERS: "xforwarded"
       KC_HOSTNAME: "auth.optrax.io"
+      KC_HOSTNAME_URL: "https://auth.optrax.io/auth"
+      KC_HOSTNAME_ADMIN_URL: "https://auth.optrax.io/auth"
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # No exponemos el puerto 8080 al exterior para obligar a usar el puerto 443 (HTTPS) de Nginx
+    # Keycloak sigue siendo accesible internamente dentro de la red Docker en el puerto 8080
     volumes:
       # Si se desea importar un Realm pre-configurado de prueba
       - ./keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
@@ -104,6 +107,61 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    networks:
+      - optrax-network
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    pid: host
+    volumes:
+      - "/:/host:ro,rslave"
+    command:
+      - '--path.rootfs=/host'
+    networks:
+      - optrax-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - optrax-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    env_file:
+      - ../.env
+    networks:
+      - optrax-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command:
+      - -config.file=/etc/promtail/config.yml
     networks:
       - optrax-network
 

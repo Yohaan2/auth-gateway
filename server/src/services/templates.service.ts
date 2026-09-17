@@ -11,9 +11,9 @@ import {
 
 export interface TemplateRoleInput {
   roleName: string;
-  roleId?: string;
-  isClientRole?: boolean;
-  clientId?: string;
+  roleId?: string | null;
+  isClientRole?: boolean | null;
+  clientId?: string | null;
 }
 
 export interface TemplateGroupInput {

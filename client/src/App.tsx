@@ -135,7 +135,7 @@ function AppContent() {
           <Route path="/modules" element={<Modules />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/tenants" element={<Tenants />} />
-          <Route path="/audit" element={<AuditLogs />} />
+          <Route path="/audit-logs" element={<AuditLogs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
