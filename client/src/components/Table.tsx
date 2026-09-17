@@ -34,14 +34,14 @@ export default function Table<T extends object>({
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead>
-            <tr className="bg-gray-50">
+            <tr className="bg-gray-50 dark:bg-gray-900/50">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap ${col.className ?? ""}`}
+                  className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap ${col.className ?? ""}`}
                 >
                   {col.header}
                 </th>
@@ -66,9 +66,9 @@ export default function Table<T extends object>({
               </tr>
             ) : (
               data.map((row) => (
-                <tr key={String(row[keyField])} className="hover:bg-gray-50 transition-colors">
+                <tr key={String(row[keyField])} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                   {columns.map((col) => (
-                    <td key={col.key} className={`px-4 py-3 text-sm text-gray-700 ${col.className ?? ""}`}>
+                    <td key={col.key} className={`px-4 py-3 text-sm text-gray-700 dark:text-gray-200 ${col.className ?? ""}`}>
                       {col.render ? col.render(row) : String((row as any)[col.key] ?? "")}
                     </td>
                   ))}

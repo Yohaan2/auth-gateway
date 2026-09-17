@@ -16,7 +16,7 @@ import { gatewayClients, iamUsers } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
 import { sensitiveLimiter } from "../middleware/rate-limiter";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify, decodeJwt } from "jose";
 
 const router = Router();
 
@@ -290,7 +290,13 @@ router.get("/verify", async (req, res, next) => {
     const { clientId } = req.query as { clientId?: string };
 
     try {
-      const issuer = `${env.KEYCLOAK_URL}/realms/${env.KEYCLOAK_REALM}`;
+      // Usar el issuer del propio token (Keycloak puede emitir con URL distinta a KEYCLOAK_URL)
+      const claims = decodeJwt(token);
+      const issuer = claims.iss;
+      if (!issuer) {
+        return res.status(401).json({ valid: false, error: "Token inválido." });
+      }
+
       const { payload } = await jwtVerify(token, getJWKS(), { issuer });
 
       const resourceAccess = ((payload as any).resource_access as Record<string, { roles: string[] }>) ?? {};

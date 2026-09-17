@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { tenantsApi, usersApi, type TenantView, type TenantMember, type KcUser } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useRoles } from "../auth/useRoles";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 // ─── Modal: Crear / Editar Tenant ────────────────────────────────────────────
 
@@ -397,6 +398,7 @@ function MemberRow({
         <td className="px-4 py-3 text-right">
           {isAdmin && (
             <div className="flex items-center justify-end gap-1">
+              {allTenants.filter((t) => t.id !== tenantId).length > 0 && (
               <button
                 onClick={() => setShowMove(true)}
                 className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
@@ -405,6 +407,7 @@ function MemberRow({
                 <ArrowRightLeft size={12} />
                 Mover
               </button>
+              )}
               <button
                 onClick={() => setShowRemove(true)}
                 className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -669,7 +672,15 @@ export default function Tenants() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<TenantView | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 500);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const { data: allTenantsData } = useQuery({
+    queryKey: ["tenants-all"],
+    queryFn: () => tenantsApi.list({ first: 0, max: 500 }),
+    staleTime: 60_000,
+  });
+  const allTenantsForMove = allTenantsData?.tenants ?? [];
 
   const {
     data,
@@ -680,9 +691,9 @@ export default function Tenants() {
     fetchNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ["tenants", search],
+    queryKey: ["tenants", debouncedSearch],
     queryFn: ({ pageParam = 0 }) =>
-      tenantsApi.list({ first: pageParam as number, max: TENANTS_PAGE, search: search || undefined }),
+      tenantsApi.list({ first: pageParam as number, max: TENANTS_PAGE, search: debouncedSearch || undefined }),
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage.hasMore) return undefined;
       return allPages.reduce((sum, p) => sum + p.tenants.length, 0);
@@ -711,6 +722,7 @@ export default function Tenants() {
 
   const handleSaved = () => {
     qc.invalidateQueries({ queryKey: ["tenants"] });
+    qc.invalidateQueries({ queryKey: ["tenants-all"] });
   };
 
   return (
@@ -798,7 +810,7 @@ export default function Tenants() {
             <TenantCard
               key={tenant.id}
               tenant={tenant}
-              allTenants={tenants}
+              allTenants={allTenantsForMove.length > 0 ? allTenantsForMove : tenants}
               isAdmin={isAdmin}
               onEdit={setEditTarget}
               onDeleted={handleSaved}

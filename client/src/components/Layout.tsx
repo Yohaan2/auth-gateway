@@ -12,11 +12,15 @@ import {
   X,
   LayoutTemplate,
   Building2,
+  ScrollText,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useState } from "react";
 import { useRoles } from "../auth/useRoles";
 import { useIamAccess } from "../auth/useIamAccess";
 import type { IamPermission } from "../api/admin-api";
+import { useTheme } from "../theme/ThemeContext";
 
 const NAV_ITEMS: { path: string; label: string; icon: typeof LayoutDashboard; permission?: IamPermission }[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -25,6 +29,7 @@ const NAV_ITEMS: { path: string; label: string; icon: typeof LayoutDashboard; pe
   { path: "/modules", label: "Módulos", icon: AppWindow, permission: "iam:manage_settings" },
   { path: "/templates", label: "Plantillas de Acceso", icon: LayoutTemplate, permission: "iam:manage_templates" },
   { path: "/tenants", label: "Tenants", icon: Building2, permission: "iam:manage_tenants" },
+  { path: "/audit", label: "Auditoría", icon: ScrollText, permission: "iam:view_audit" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -32,11 +37,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, signoutRedirect } = useAuth();
   const { isAdmin, isViewer } = useRoles();
   const { hasPermission, isLoading: iamLoading } = useIamAccess();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Mientras se resuelven los permisos IAM, o si el usuario no tiene ningún
-  // rol administrativo del IAM (p. ej. solo auth-manager-viewer legacy),
-  // se muestran todos los ítems para no romper el flujo existente del panel.
   const visibleNavItems = NAV_ITEMS.filter(
     (item) => !item.permission || iamLoading || hasPermission(item.permission)
   );
@@ -47,40 +50,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     "Administrador";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Overlay móvil */}
+    <div className="h-screen bg-gray-50 dark:bg-gray-950 flex overflow-hidden">
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white flex flex-col transform transition-transform duration-200 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white flex flex-col h-screen transform transition-transform duration-200 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-700">
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-700 shrink-0">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Shield size={18} className="text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold text-sm leading-tight">Auth Manager</p>
             <p className="text-gray-400 text-xs">optrax-realm</p>
           </div>
           <button
-            className="ml-auto lg:hidden text-gray-400 hover:text-white"
+            type="button"
+            className="ml-auto text-gray-400 hover:text-white lg:hidden"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-4 px-2 space-y-0.5">
+        <nav className="flex-1 min-h-0 overflow-y-auto py-4 px-2 space-y-0.5">
           {visibleNavItems.map(({ path, label, icon: Icon }) => {
             const active =
               path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -88,7 +90,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={path}
                 to={path}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
                     ? "bg-indigo-600 text-white"
@@ -103,8 +107,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Usuario */}
-        <div className="border-t border-gray-700 p-4">
+        <div className="border-t border-gray-700 p-4 shrink-0">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-sm font-bold flex-shrink-0">
               {displayName.charAt(0).toUpperCase()}
@@ -117,6 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <button
+            type="button"
             onClick={() => signoutRedirect()}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
           >
@@ -126,23 +130,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Contenido principal */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar móvil */}
-        <header className="lg:hidden h-16 bg-white border-b flex items-center px-4 gap-3">
+      <div
+        className={`flex-1 flex flex-col min-w-0 min-h-0 transition-[margin] duration-200 ${
+          sidebarOpen ? "lg:ml-64" : ""
+        }`}
+      >
+        <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 gap-3 shrink-0">
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-600 hover:text-gray-900"
+            type="button"
+            onClick={() => setSidebarOpen((o) => !o)}
+            className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label={sidebarOpen ? "Ocultar menú" : "Mostrar menú"}
           >
             <Menu size={20} />
           </button>
           <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center">
             <Shield size={14} className="text-white" />
           </div>
-          <span className="font-semibold text-gray-900">Auth Manager</span>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Auth Manager</span>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="ml-auto p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            title={theme === "light" ? "Modo oscuro" : "Modo claro"}
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 min-h-0 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

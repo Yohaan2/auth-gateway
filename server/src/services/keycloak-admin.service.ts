@@ -192,6 +192,22 @@ class KeycloakAdminService {
     return this.req({ method: "GET", url: "/users", params });
   }
 
+  /** Listado paginado con total alineado a los mismos filtros (header X-Total-Count). */
+  async listUsersPage(params: KcUserListParams = {}): Promise<{ users: KcUser[]; total: number }> {
+    const token = await this.getAdminToken();
+    const base = `/admin/realms/${env.KEYCLOAK_REALM}`;
+    const resp = await this.http.request<KcUser[]>({
+      method: "GET",
+      url: `${base}/users`,
+      params,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const headerTotal = resp.headers["x-total-count"];
+    const total =
+      headerTotal !== undefined ? parseInt(String(headerTotal), 10) : resp.data.length;
+    return { users: resp.data, total: Number.isFinite(total) ? total : resp.data.length };
+  }
+
   getUserCount(params: Omit<KcUserListParams, "first" | "max"> = {}): Promise<number> {
     return this.req({ method: "GET", url: "/users/count", params });
   }

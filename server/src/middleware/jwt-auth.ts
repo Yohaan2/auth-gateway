@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { createRemoteJWKSet, jwtVerify, decodeJwt, type JWTPayload } from "jose";
 import type { Request, Response, NextFunction } from "express";
 import { env } from "../config/env";
 import { parseTenantFromGroups } from "../services/tenant.service";
@@ -55,13 +55,15 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
   const token = authHeader.slice(7);
 
   try {
-    const issuer = `${env.KEYCLOAK_URL}/realms/${env.KEYCLOAK_REALM}`;
+    const issuer = decodeJwt(token).iss;
+    if (!issuer) {
+      return res.status(401).json({ error: "No autorizado", message: "Token inválido." });
+    }
+
     const { payload } = await jwtVerify<KeycloakTokenPayload>(token, getJWKS(), { issuer });
-    console.log('payload', payload)
     req.jwtPayload = payload;
     next();
   } catch (err: any) {
-    console.log('err', err)
     const msg = err?.code === "ERR_JWT_EXPIRED" ? "Token expirado." : "Token inválido.";
     return res.status(401).json({ error: "No autorizado", message: msg });
   }

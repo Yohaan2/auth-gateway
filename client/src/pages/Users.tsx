@@ -6,6 +6,7 @@ import { usersApi, type KcUser } from "../api/admin-api";
 import Table, { type Column } from "../components/Table";
 import CreateUserModal from "./modals/CreateUserModal";
 import { useRoles } from "../auth/useRoles";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 const PAGE_SIZE = 20;
 
@@ -25,31 +26,20 @@ function StatusBadge({ enabled }: { enabled: boolean }) {
 export default function Users() {
   const { isAdmin } = useRoles();
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 400);
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [filterEnabled, setFilterEnabled] = useState<"" | "true" | "false">("");
 
-  // Debounce de búsqueda
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    clearTimeout((window as any).__searchTimer);
-    (window as any).__searchTimer = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPage(1);
-    }, 400);
-  };
-
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["users", debouncedSearch, page, filterEnabled],
     queryFn: () =>
       usersApi.list({
         search: debouncedSearch || undefined,
         first: (page - 1) * PAGE_SIZE,
         max: PAGE_SIZE,
-        enabled: filterEnabled !== "" ? filterEnabled === "true" : undefined,
+        enabled: filterEnabled === "" ? undefined : filterEnabled === "true",
       }),
-    placeholderData: (prev) => prev,
   });
 
   const columns: Column<KcUser>[] = [
@@ -120,9 +110,10 @@ export default function Users() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {data?.total !== undefined ? `${data.total} usuarios en el realm` : "Cargando..."}  
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Usuarios</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          {data?.total !== undefined ? `${data.total} usuarios en el realm` : "Cargando..."}
+          {isFetching && !isLoading && <span className="ml-2 text-indigo-500 text-xs">Actualizando…</span>}
         </p>
         </div>
         {isAdmin && (
@@ -143,15 +134,18 @@ export default function Users() {
           <input
             type="text"
             value={search}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Buscar por username, email o nombre..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white dark:bg-gray-800 dark:text-gray-100"
           />
         </div>
         <select
           value={filterEnabled}
           onChange={(e) => { setFilterEnabled(e.target.value as any); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700"
+          className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700 dark:text-gray-200"
         >
           <option value="">Todos los estados</option>
           <option value="true">Solo activos</option>

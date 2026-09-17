@@ -6,20 +6,21 @@ import {
   Monitor, RefreshCw, Mail, Save, Shield, LayoutTemplate, RotateCcw, RefreshCwIcon
 } from "lucide-react";
 import {
-  usersApi, rolesApi, clientsApi, templatesApi,
+  usersApi, rolesApi, templatesApi,
   type KcRole, type AccessTemplate, IAM_PERMISSIONS
 } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RoleDualList from "../components/RoleDualList";
+import LoadingButton from "../components/LoadingButton";
 import { useRoles } from "../auth/useRoles";
 import { useIamAccess } from "../auth/useIamAccess";
 import toast from "react-hot-toast";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -41,12 +42,16 @@ export default function UserDetail() {
   const [changeTemplateOpen, setChangeTemplateOpen] = useState(false);
   const [selectedNewTemplate, setSelectedNewTemplate] = useState("");
   const [provActionLoading, setProvActionLoading] = useState<string | null>(null);
+  const [saveEditLoading, setSaveEditLoading] = useState(false);
+  const [resetPwLoading, setResetPwLoading] = useState(false);
+  const [verifyEmailLoading, setVerifyEmailLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [revokeLoading, setRevokeLoading] = useState(false);
 
   const userQ = useQuery({ queryKey: ["user", id], queryFn: () => usersApi.get(id!) });
   const sessionsQ = useQuery({ queryKey: ["user-sessions", id], queryFn: () => usersApi.getSessions(id!) });
   const roleMappingsQ = useQuery({ queryKey: ["user-roles", id], queryFn: () => usersApi.getRoles(id!) });
   const allRealmRolesQ = useQuery({ queryKey: ["realm-roles"], queryFn: rolesApi.list });
-  const clientsQ = useQuery({ queryKey: ["clients"], queryFn: () => clientsApi.list() });
   // Fase 4: perfil IAM del usuario desde DB local
   const iamProfileQ = useQuery({
     queryKey: ["iam-user-profile", id],
@@ -72,6 +77,7 @@ export default function UserDetail() {
 
   const saveEdit = async () => {
     if (!editForm) return;
+    setSaveEditLoading(true);
     try {
       await usersApi.update(id!, editForm);
       toast.success("Usuario actualizado.");
@@ -79,39 +85,62 @@ export default function UserDetail() {
       qc.invalidateQueries({ queryKey: ["user", id] });
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? "Error al actualizar.");
+    } finally {
+      setSaveEditLoading(false);
     }
   };
 
   const handleDelete = async () => {
+    setDeleteLoading(true);
     try {
       await usersApi.delete(id!);
       toast.success("Usuario eliminado.");
       navigate("/users");
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? "Error al eliminar.");
+    } finally {
+      setDeleteLoading(false);
+      setConfirmDelete(false);
     }
-    setConfirmDelete(false);
   };
 
   const handleRevokeSessions = async () => {
+    setRevokeLoading(true);
     try {
       await usersApi.deleteSessions(id!);
       toast.success("Sesiones revocadas.");
       sessionsQ.refetch();
     } catch {
       toast.error("Error al revocar sesiones.");
+    } finally {
+      setRevokeLoading(false);
+      setConfirmRevoke(false);
     }
-    setConfirmRevoke(false);
   };
 
   const handleResetPassword = async () => {
     if (!resetPwForm.password) return;
+    setResetPwLoading(true);
     try {
       await usersApi.resetPassword(id!, resetPwForm.password, resetPwForm.temporary);
       toast.success("Contraseña restablecida.");
       setResetPwForm({ open: false, password: "", temporary: true });
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? "Error al restablecer contraseña.");
+    } finally {
+      setResetPwLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    setVerifyEmailLoading(true);
+    try {
+      await usersApi.verifyEmail(id!);
+      toast.success("Email de verificación enviado.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Error al enviar verificación.");
+    } finally {
+      setVerifyEmailLoading(false);
     }
   };
 
@@ -171,18 +200,6 @@ export default function UserDetail() {
       userQ.refetch();
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? "Error al sincronizar.");
-    } finally {
-      setProvActionLoading(null);
-    }
-  };
-
-  const handleSendActivationEmail = async () => {
-    setProvActionLoading("email");
-    try {
-      await usersApi.sendActivationEmail(id!);
-      toast.success("Email de activación enviado.");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? "Error al enviar email de activación.");
     } finally {
       setProvActionLoading(null);
     }
@@ -281,12 +298,13 @@ export default function UserDetail() {
               </label>
             </div>
             <div className="flex gap-2 pt-1">
-              <button
+              <LoadingButton
                 onClick={saveEdit}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
+                loading={saveEditLoading}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
                 <Save size={13} /> Guardar
-              </button>
+              </LoadingButton>
               <button
                 onClick={() => setEditForm(null)}
                 className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -331,12 +349,13 @@ export default function UserDetail() {
                 >
                   <KeyRound size={13} /> Resetear contraseña
                 </button>
-                <button
-                  onClick={() => usersApi.verifyEmail(id!).then(() => toast.success("Email de verificación enviado.")).catch(() => toast.error("Error al enviar verificación."))}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+                <LoadingButton
+                  onClick={handleVerifyEmail}
+                  loading={verifyEmailLoading}
+                  className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50"
                 >
                   <Mail size={13} /> Verificar email
-                </button>
+                </LoadingButton>
               </div>
             )}
           </div>
@@ -365,12 +384,13 @@ export default function UserDetail() {
               />
               Temporal
             </label>
-            <button
+            <LoadingButton
               onClick={handleResetPassword}
-              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+              loading={resetPwLoading}
+              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50"
             >
               Aplicar
-            </button>
+            </LoadingButton>
             <button
               onClick={() => setResetPwForm({ open: false, password: "", temporary: true })}
               className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -438,36 +458,6 @@ export default function UserDetail() {
           )}
         </Section>
       )}
-
-      {/* Roles por módulo (Client Roles) */}
-      <Section title="Roles por Módulo">
-        {clientsQ.isLoading ? (
-          <p className="text-sm text-gray-400">Cargando módulos...</p>
-        ) : (clientsQ.data?.length ?? 0) === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">
-            No hay módulos registrados. Crea uno en la sección{" "}
-            <Link to="/modules" className="text-indigo-600 underline">Módulos</Link>.
-          </p>
-        ) : (
-          <div className="space-y-5">
-            {clientsQ.data?.map((client) => {
-              const clientMappings = roleMappingsQ.data?.clientMappings?.[client.clientId];
-              const assignedClientRoles = clientMappings?.mappings ?? [];
-              return (
-                <ClientRoleSection
-                  key={client.id}
-                  clientId={client.id}
-                  clientName={client.name || client.clientId}
-                  userId={id!}
-                  assignedRoles={assignedClientRoles}
-                  isAdmin={isAdmin}
-                  onUpdate={() => qc.invalidateQueries({ queryKey: ["user-roles", id] })}
-                />
-              );
-            })}
-          </div>
-        )}
-      </Section>
 
       {/* ─── Sección Aprovisionamiento IAM (Fase 4) ────────────────── */}
       {hasPermission(IAM_PERMISSIONS.MANAGE_USERS) && (
@@ -570,21 +560,6 @@ export default function UserDetail() {
                   Sincronizar con Keycloak
                 </button>
 
-                {/* Email de activación */}
-                {isAdmin && (
-                  <button
-                    onClick={handleSendActivationEmail}
-                    disabled={provActionLoading !== null}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-50 transition-colors"
-                  >
-                    {provActionLoading === "email" ? (
-                      <Mail size={12} className="animate-spin" />
-                    ) : (
-                      <Mail size={12} />
-                    )}
-                    Enviar email de activación
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -636,6 +611,7 @@ export default function UserDetail() {
         message={`¿Estás seguro de que deseas eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
         danger
+        loading={deleteLoading}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -645,80 +621,10 @@ export default function UserDetail() {
         message={`¿Deseas cerrar todas las sesiones activas de "${user.username}"?`}
         confirmLabel="Revocar sesiones"
         danger
+        loading={revokeLoading}
         onConfirm={handleRevokeSessions}
         onCancel={() => setConfirmRevoke(false)}
       />
-    </div>
-  );
-}
-
-// Subcomponente para roles de un cliente específico
-function ClientRoleSection({
-  clientId,
-  clientName,
-  userId,
-  assignedRoles,
-  isAdmin,
-  onUpdate,
-}: {
-  clientId: string;
-  clientName: string;
-  userId: string;
-  assignedRoles: KcRole[];
-  isAdmin: boolean;
-  onUpdate: () => void;
-}) {
-  const { data: allRoles, isLoading } = useQuery({
-    queryKey: ["client-roles", clientId],
-    queryFn: () => clientsApi.getRoles(clientId),
-  });
-
-  const handleChange = async (newRoles: KcRole[]) => {
-    const current = new Set(assignedRoles.map((r) => r.id));
-    const next = new Set(newRoles.map((r) => r.id));
-    const toAdd = newRoles.filter((r) => !current.has(r.id));
-    const toRemove = assignedRoles.filter((r) => !next.has(r.id));
-    try {
-      if (toAdd.length) await usersApi.addClientRoles(userId, clientId, toAdd);
-      if (toRemove.length) await usersApi.removeClientRoles(userId, clientId, toRemove);
-      toast.success(`Roles de "${clientName}" actualizados.`);
-      onUpdate();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? "Error al actualizar roles de cliente.");
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-gray-100 p-4 bg-gray-50/50">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-          {clientName}
-        </p>
-        {(allRoles?.length ?? 0) === 0 && !isLoading && (
-          <Link
-            to="/modules"
-            className="text-xs text-indigo-500 hover:text-indigo-700"
-          >
-            + Crear roles en Módulos →
-          </Link>
-        )}
-      </div>
-      {isLoading ? (
-        <p className="text-xs text-gray-400">Cargando roles...</p>
-      ) : (allRoles?.length ?? 0) === 0 ? (
-        <p className="text-xs text-gray-400 py-2">
-          Este módulo no tiene roles definidos. Ve a{" "}
-          <Link to="/modules" className="text-indigo-500 underline">Módulos</Link>{" "}
-          y crea los roles primero.
-        </p>
-      ) : (
-        <RoleDualList
-          allRoles={allRoles ?? []}
-          assignedRoles={assignedRoles}
-          onChange={handleChange}
-          disabled={!isAdmin}
-        />
-      )}
     </div>
   );
 }

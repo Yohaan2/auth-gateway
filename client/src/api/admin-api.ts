@@ -96,6 +96,30 @@ export const dashboardApi = {
   getStats: () => api.get<DashboardStats>("/dashboard").then((r) => r.data),
 };
 
+// ─── Auditoría ────────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  actorSub: string;
+  actorEmail: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  detail: Record<string, unknown> | null;
+  timestamp: string;
+}
+
+export interface ListAuditParams {
+  first?: number;
+  max?: number;
+  search?: string;
+}
+
+export const auditApi = {
+  list: (params: ListAuditParams = {}) =>
+    api.get<{ logs: AuditLogEntry[]; total: number }>("/audit", { params }).then((r) => r.data),
+};
+
 // ─── Usuarios ─────────────────────────────────────────────────────────────────
 
 export interface ListUsersParams {

@@ -48,10 +48,7 @@ router.get("/", requireAdminOrViewer, async (req, res, next) => {
     if (enabled !== undefined) params.enabled = enabled === "true";
     if (emailVerified !== undefined) params.emailVerified = emailVerified === "true";
 
-    const [users, total] = await Promise.all([
-      kcAdmin.listUsers(params),
-      kcAdmin.getUserCount(params),
-    ]);
+    const { users, total } = await kcAdmin.listUsersPage(params);
 
     res.json({ users, total });
   } catch (err) {
