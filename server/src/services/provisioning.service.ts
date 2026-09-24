@@ -53,7 +53,7 @@ class ProvisioningService {
     actor: KeycloakTokenPayload
   ): Promise<ProvisioningResult> {
     // ── 1. Crear el usuario en Keycloak ──────────────────────────────────────
-    const userPayload: any = {
+    const userPayload = {
       username: input.username,
       email: input.email,
       firstName: input.firstName,
@@ -61,16 +61,6 @@ class ProvisioningService {
       enabled: input.enabled ?? true,
       emailVerified: false,
     };
-
-    if (input.password) {
-      userPayload.credentials = [
-        {
-          type: "password",
-          value: input.password,
-          temporary: input.temporaryPassword ?? false,
-        },
-      ];
-    }
 
     const keycloakId = await kcAdmin.createUser(userPayload);
 
@@ -82,6 +72,15 @@ class ProvisioningService {
     let tenantName: string | null = null;
 
     try {
+      // Keycloak no garantiza aplicar credentials en el POST /users; reset-password es el flujo soportado.
+      if (input.password) {
+        await kcAdmin.resetPassword(
+          keycloakId,
+          input.password,
+          input.temporaryPassword ?? false
+        );
+      }
+
       // ── 2. Asignar al tenant (si se proporcionó el KC group ID) ──────────
       if (input.tenantId) {
         await kcAdmin.addUserToGroup(keycloakId, input.tenantId);
@@ -109,7 +108,7 @@ class ProvisioningService {
 
     // ── 3. Enviar email de activación (opcional, no bloquea el flujo principal) ──
     let activationEmailSent = false;
-    if (input.sendActivationEmail) {
+    if (input.sendActivationEmail && !input.password) {
       try {
         await kcAdmin.sendActivationEmail(keycloakId);
         activationEmailSent = true;
