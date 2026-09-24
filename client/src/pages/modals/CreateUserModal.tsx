@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, User, Shield, Mail, ChevronDown, Loader2, CheckCircle2, Building2 } from "lucide-react";
+import { X, User, Shield, ChevronDown, Loader2, CheckCircle2, Building2 } from "lucide-react";
 import { usersApi, templatesApi, tenantsApi, type AccessTemplate } from "../../api/admin-api";
 import toast from "react-hot-toast";
 
@@ -372,24 +372,7 @@ export default function CreateUserModal({ onClose, onCreated }: Props) {
                   </div>
                 </label>
 
-                {/* Email de activación */}
-                <label className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors group">
-                  <div className="flex items-start gap-2.5">
-                    <Mail size={15} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">Enviar email de activación</p>
-                      <p className="text-xs text-gray-500">
-                        Keycloak enviará un enlace para que el usuario establezca su contraseña.
-                      </p>
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={form.sendActivationEmail}
-                    onChange={(e) => set("sendActivationEmail", e.target.checked)}
-                    className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-400 flex-shrink-0"
-                  />
-                </label>
+                {/* SMTP no configurado — opción "Enviar email de activación" oculta; sendActivationEmail queda en false */}
               </div>
             </section>
           </div>

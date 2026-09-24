@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, CheckCircle, XCircle, Trash2, KeyRound, LogOut,
-  Monitor, RefreshCw, Mail, Save, Shield, LayoutTemplate, RotateCcw, RefreshCwIcon
+  Monitor, RefreshCw, Save, Shield, LayoutTemplate, RotateCcw, RefreshCwIcon
 } from "lucide-react";
 import {
   usersApi, rolesApi, templatesApi,
@@ -44,7 +44,7 @@ export default function UserDetail() {
   const [provActionLoading, setProvActionLoading] = useState<string | null>(null);
   const [saveEditLoading, setSaveEditLoading] = useState(false);
   const [resetPwLoading, setResetPwLoading] = useState(false);
-  const [verifyEmailLoading, setVerifyEmailLoading] = useState(false);
+  // ponytail: oculto hasta tener SMTP en Keycloak — verifyEmailLoading / handleVerifyEmail
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [revokeLoading, setRevokeLoading] = useState(false);
 
@@ -132,17 +132,7 @@ export default function UserDetail() {
     }
   };
 
-  const handleVerifyEmail = async () => {
-    setVerifyEmailLoading(true);
-    try {
-      await usersApi.verifyEmail(id!);
-      toast.success("Email de verificación enviado.");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? "Error al enviar verificación.");
-    } finally {
-      setVerifyEmailLoading(false);
-    }
-  };
+  // const handleVerifyEmail = async () => { ... usersApi.verifyEmail — deshabilitado (SMTP) }
 
   const handleRealmRoleChange = async (newRoles: KcRole[]) => {
     const current = new Set(assignedRealmRoles.map((r) => r.id));
@@ -357,13 +347,9 @@ export default function UserDetail() {
                 >
                   <KeyRound size={13} /> Resetear contraseña
                 </button>
-                <LoadingButton
-                  onClick={handleVerifyEmail}
-                  loading={verifyEmailLoading}
-                  className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                >
-                  <Mail size={13} /> Verificar email
-                </LoadingButton>
+                {/* SMTP no configurado en Keycloak — botón deshabilitado
+                <LoadingButton ...>Verificar email</LoadingButton>
+                */}
               </div>
             )}
           </div>
