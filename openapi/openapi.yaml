@@ -1,0 +1,972 @@
+openapi: 3.1.0
+info:
+  title: Auth Gateway API
+  version: 1.0.0
+  description: 'Inventario estático de rutas Express verificadas desde el código fuente. Solo documenta parámetros, cuerpos, estados y seguridad observables.'
+paths:
+  /api/admin/audit-logs:
+    get:
+      summary: GET /api/admin/audit-logs
+      description: 'Implementado en server/routes/audit-logs.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/clients:
+    get:
+      summary: GET /api/admin/clients
+      description: 'Implementado en server/routes/clients.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/clients
+      description: 'Implementado en server/routes/clients.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/clients/{id}:
+    get:
+      summary: GET /api/admin/clients/{id}
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/clients/{id}
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/clients/{id}/roles:
+    get:
+      summary: GET /api/admin/clients/{id}/roles
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/clients/{id}/roles
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/clients/{id}/roles/{roleName}:
+    delete:
+      summary: DELETE /api/admin/clients/{id}/roles/{roleName}
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/clients/{id}/roles/{roleName}
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/clients/{id}/roles/{roleName}/users:
+    get:
+      summary: GET /api/admin/clients/{id}/roles/{roleName}/users
+      description: 'Implementado en server/routes/clients.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/dashboard:
+    get:
+      summary: GET /api/admin/dashboard
+      description: 'Implementado en server/routes/dashboard.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/gateway/clients:
+    get:
+      summary: GET /api/admin/gateway/clients
+      description: 'Implementado en server/routes/gateway-admin.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/gateway/clients
+      description: 'Implementado en server/routes/gateway-admin.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+        "409":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/gateway/clients/{clientId}:
+    delete:
+      summary: DELETE /api/admin/gateway/clients/{clientId}
+      description: 'Implementado en server/routes/gateway-admin.ts.'
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/gateway/clients/{clientId}
+      description: 'Implementado en server/routes/gateway-admin.ts.'
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/roles:
+    get:
+      summary: GET /api/admin/roles
+      description: 'Implementado en server/routes/roles.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/roles
+      description: 'Implementado en server/routes/roles.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/roles/{roleName}:
+    delete:
+      summary: DELETE /api/admin/roles/{roleName}
+      description: 'Implementado en server/routes/roles.ts.'
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/roles/{roleName}
+      description: 'Implementado en server/routes/roles.ts.'
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/roles/{roleName}/composites:
+    get:
+      summary: GET /api/admin/roles/{roleName}/composites
+      description: 'Implementado en server/routes/roles.ts.'
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/roles/{roleName}/users:
+    get:
+      summary: GET /api/admin/roles/{roleName}/users
+      description: 'Implementado en server/routes/roles.ts.'
+      parameters:
+        - name: roleName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/templates:
+    get:
+      summary: GET /api/admin/templates
+      description: 'Implementado en server/routes/templates.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/templates
+      description: 'Implementado en server/routes/templates.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+        "409":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/templates/keycloak/groups:
+    get:
+      summary: GET /api/admin/templates/keycloak/groups
+      description: 'Implementado en server/routes/templates.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/templates/keycloak/roles:
+    get:
+      summary: GET /api/admin/templates/keycloak/roles
+      description: 'Implementado en server/routes/templates.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/templates/{id}:
+    delete:
+      summary: DELETE /api/admin/templates/{id}
+      description: 'Implementado en server/routes/templates.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+    get:
+      summary: GET /api/admin/templates/{id}
+      description: 'Implementado en server/routes/templates.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/templates/{id}
+      description: 'Implementado en server/routes/templates.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+        "409":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/tenants:
+    get:
+      summary: GET /api/admin/tenants
+      description: 'Implementado en server/routes/tenants.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/tenants
+      description: 'Implementado en server/routes/tenants.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/tenants/{kcGroupId}:
+    delete:
+      summary: DELETE /api/admin/tenants/{kcGroupId}
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+    get:
+      summary: GET /api/admin/tenants/{kcGroupId}
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/tenants/{kcGroupId}
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/tenants/{kcGroupId}/members:
+    get:
+      summary: GET /api/admin/tenants/{kcGroupId}/members
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/tenants/{kcGroupId}/members
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/tenants/{kcGroupId}/members/{userId}:
+    delete:
+      summary: DELETE /api/admin/tenants/{kcGroupId}/members/{userId}
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/tenants/{kcGroupId}/members/{userId}/move:
+    put:
+      summary: PUT /api/admin/tenants/{kcGroupId}/members/{userId}/move
+      description: 'Implementado en server/routes/tenants.ts.'
+      parameters:
+        - name: kcGroupId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users:
+    get:
+      summary: GET /api/admin/users
+      description: 'Implementado en server/routes/users.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/users
+      description: 'Implementado en server/routes/users.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: 'Respuesta emitida por el controlador.'
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}:
+    delete:
+      summary: DELETE /api/admin/users/{id}
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    get:
+      summary: GET /api/admin/users/{id}
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    put:
+      summary: PUT /api/admin/users/{id}
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/activation-email:
+    post:
+      summary: POST /api/admin/users/{id}/activation-email
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/groups:
+    get:
+      summary: GET /api/admin/users/{id}/groups
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/iam-profile:
+    get:
+      summary: GET /api/admin/users/{id}/iam-profile
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/reapply-template:
+    post:
+      summary: POST /api/admin/users/{id}/reapply-template
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/reset-password:
+    put:
+      summary: PUT /api/admin/users/{id}/reset-password
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/roles:
+    get:
+      summary: GET /api/admin/users/{id}/roles
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/roles/clients/{clientUuid}:
+    delete:
+      summary: DELETE /api/admin/users/{id}/roles/clients/{clientUuid}
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: clientUuid
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/users/{id}/roles/clients/{clientUuid}
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: clientUuid
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/roles/realm:
+    delete:
+      summary: DELETE /api/admin/users/{id}/roles/realm
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+    post:
+      summary: POST /api/admin/users/{id}/roles/realm
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/sessions:
+    delete:
+      summary: DELETE /api/admin/users/{id}/sessions
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+    get:
+      summary: GET /api/admin/users/{id}/sessions
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/sync:
+    post:
+      summary: POST /api/admin/users/{id}/sync
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/template:
+    put:
+      summary: PUT /api/admin/users/{id}/template
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      security:
+        - bearerAuth: []
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/admin/users/{id}/verify-email:
+    post:
+      summary: POST /api/admin/users/{id}/verify-email
+      description: 'Implementado en server/routes/users.ts.'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/auth/callback:
+    get:
+      summary: GET /api/auth/callback
+      description: 'Implementado en server/auth/routes.ts.'
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/auth/login:
+    get:
+      summary: GET /api/auth/login
+      description: 'Implementado en server/auth/routes.ts.'
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/auth/logout:
+    get:
+      summary: GET /api/auth/logout
+      description: 'Implementado en server/auth/routes.ts.'
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/auth/me:
+    get:
+      summary: GET /api/auth/me
+      description: 'Implementado en server/auth/routes.ts.'
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/gateway/login:
+    post:
+      summary: POST /api/gateway/login
+      description: 'Implementado en server/routes/gateway.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+        "401":
+          description: 'Respuesta emitida por el controlador.'
+        "403":
+          description: 'Respuesta emitida por el controlador.'
+        "404":
+          description: 'Respuesta emitida por el controlador.'
+        "502":
+          description: 'Respuesta emitida por el controlador.'
+  /api/gateway/logout:
+    post:
+      summary: POST /api/gateway/logout
+      description: 'Implementado en server/routes/gateway.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+  /api/gateway/refresh:
+    post:
+      summary: POST /api/gateway/refresh
+      description: 'Implementado en server/routes/gateway.ts.'
+      requestBody:
+        content:
+          application/json: {}
+        description: 'Cuerpo leído por el controlador; sin DTO/Zod reutilizable verificado.'
+        required: false
+      responses:
+        "400":
+          description: 'Respuesta emitida por el controlador.'
+        "401":
+          description: 'Respuesta emitida por el controlador.'
+        "403":
+          description: 'Respuesta emitida por el controlador.'
+  /api/gateway/verify:
+    get:
+      summary: GET /api/gateway/verify
+      description: 'Implementado en server/routes/gateway.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "401":
+          description: 'Respuesta emitida por el controlador.'
+  /api/health:
+    get:
+      summary: GET /api/health
+      description: 'Implementado en server/index.ts.'
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+  /api/iam/me:
+    get:
+      summary: GET /api/iam/me
+      description: 'Implementado en server/routes/iam.ts.'
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 'Respuesta emitida por el controlador.'
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    sessionCookie: { type: apiKey, in: cookie, name: connect.sid }
