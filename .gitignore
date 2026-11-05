@@ -39,3 +39,8 @@ logs/
 # Docker
 .docker/
 promtail-config.yml
+docker/certs/*
+!docker/certs/.gitkeep
+docker/generated/
+docker/smoke/
+docker/local/

@@ -61,8 +61,7 @@ export async function bootstrapAdminUser(): Promise<void> {
       const [existingKcUser] = await kcAdmin.listUsers({ username });
       if (existingKcUser) {
         keycloakId = existingKcUser.id;
-        // Resetear password
-        await kcAdmin.resetPassword(keycloakId, password, false);
+        logger.warn("Bootstrap: usuario existente en Keycloak; no se cambia su contraseña.");
       } else {
         keycloakId = await kcAdmin.createUser(userPayload);
         logger.info(`Bootstrap: Usuario creado en Keycloak con ID: ${keycloakId}`);

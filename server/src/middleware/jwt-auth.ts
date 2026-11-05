@@ -72,13 +72,15 @@ export async function requireJwt(req: Request, res: Response, next: NextFunction
   const token = authHeader.slice(7);
 
   try {
-    const issuer = decodeJwt(token).iss;
-    if (!issuer) {
-      return res.status(401).json({ error: "No autorizado", message: "Token inválido." });
+    const issuer = `${env.KEYCLOAK_URL}/realms/${env.KEYCLOAK_REALM}`;
+    const { payload } = await jwtVerify(token, getJWKS(), { issuer });
+    const allowedClients = (env.KEYCLOAK_ALLOWED_CLIENT_IDS || env.KEYCLOAK_CLIENT_ID)
+      .split(",").map((id) => id.trim());
+    if (typeof payload.sub !== "string" || typeof payload.azp !== "string" ||
+        !allowedClients.includes(payload.azp)) {
+      return res.status(403).json({ error: "Acceso denegado", message: "Cliente no autorizado para esta API." });
     }
-
-    const { payload } = await jwtVerify<KeycloakTokenPayload>(token, getJWKS(), { issuer });
-    req.jwtPayload = payload;
+    req.jwtPayload = payload as KeycloakTokenPayload;
     next();
   } catch (err: any) {
     const msg = err?.code === "ERR_JWT_EXPIRED" ? "Token expirado." : "Token inválido.";

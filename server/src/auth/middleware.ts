@@ -35,9 +35,8 @@ declare global {
  * Verifica si hay tokens guardados en la sesión y si no han expirado.
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // TODO: Agregar validación real de expiración del Token usando tokens.expires_at o llamando a Keycloak userInfo.
-  // Por ahora, solo se comprueba la existencia de la sesión y los tokens como placeholder de arquitectura.
-  if (!req.session || !req.session.tokens || !req.session.userInfo) {
+  if (!req.session?.tokens?.access_token || !req.session.userInfo ||
+      !req.session.tokens.expires_at || req.session.tokens.expires_at <= Math.floor(Date.now() / 1000)) {
     return res.status(401).json({
       error: "No autorizado",
       message: "Debes iniciar sesión con Keycloak para acceder a este recurso.",

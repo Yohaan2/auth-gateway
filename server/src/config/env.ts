@@ -12,6 +12,8 @@ const envSchema = z.object({
 
   // Secretos de sesión (flujo legacy, se mantiene por compatibilidad)
   SESSION_SECRET: z.string().min(8, "SESSION_SECRET debe tener al menos 8 caracteres"),
+  ENABLE_ADMIN_BOOTSTRAP: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
+  LOCAL_HTTP_ONLY: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
 
   // Base de datos (Postgres)
   DATABASE_URL: z.string().url(),
@@ -25,6 +27,8 @@ const envSchema = z.object({
   KEYCLOAK_URL: z.string().url(),
   KEYCLOAK_INTERNAL_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional()),
   KEYCLOAK_REALM: z.string(),
+  // Clientes que pueden invocar la API administrativa del panel.
+  KEYCLOAK_ALLOWED_CLIENT_IDS: z.string().default(""),
 
   // Auth Manager Client (flujo legacy de sesión)
   KEYCLOAK_CLIENT_ID: z.string(),
@@ -45,7 +49,29 @@ const envSchema = z.object({
 });
 
 // Validar variables de entorno de manera segura al arrancar
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema.superRefine((config, ctx) => {
+  if (config.NODE_ENV === "production" && config.SESSION_SECRET.length < 32) {
+    ctx.addIssue({ code: "custom", path: ["SESSION_SECRET"], message: "Se requieren al menos 32 caracteres en producción." });
+  }
+  if (config.NODE_ENV === "production" && config.ENABLE_ADMIN_BOOTSTRAP) {
+    ctx.addIssue({ code: "custom", path: ["ENABLE_ADMIN_BOOTSTRAP"], message: "El bootstrap automático no está permitido en producción." });
+  }
+  if (config.NODE_ENV === "production" && !config.KEYCLOAK_ALLOWED_CLIENT_IDS.trim()) {
+    ctx.addIssue({ code: "custom", path: ["KEYCLOAK_ALLOWED_CLIENT_IDS"], message: "Defina los clientes autorizados para la API administrativa." });
+  }
+  const localhostHttp = config.LOCAL_HTTP_ONLY &&
+    [config.APP_URL, config.FRONTEND_URL, config.KEYCLOAK_URL].every((value) => {
+      const url = new URL(value);
+      return url.protocol === "http:" && url.hostname === "localhost";
+    });
+  if (config.LOCAL_HTTP_ONLY && !localhostHttp) {
+    ctx.addIssue({ code: "custom", path: ["LOCAL_HTTP_ONLY"], message: "HTTP local solo permite URLs http://localhost." });
+  }
+  if (config.NODE_ENV === "production" && !localhostHttp &&
+      (!config.APP_URL.startsWith("https://") || !config.KEYCLOAK_URL.startsWith("https://"))) {
+    ctx.addIssue({ code: "custom", message: "APP_URL y KEYCLOAK_URL deben usar HTTPS en producción." });
+  }
+}).safeParse(process.env);
 
 if (!parsed.success) {
   console.error("❌ Error de configuración en las variables de entorno:");

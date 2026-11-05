@@ -2,7 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import session from "express-session";
 import cors from "cors";
-import "./tracing";
+import { sdk } from "./tracing";
 
 // Configuración y variables de entorno
 import { env } from "./config/env";
@@ -44,6 +44,22 @@ async function startServer() {
   const app = express();
   const httpServer = createServer(app);
 
+  // Solo Nginx (un salto) puede establecer la IP y el esquema originales.
+  app.set("trust proxy", 1);
+
+  app.get("/api/health/live", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const connected = await checkDbConnection();
+      res.status(connected ? 200 : 503).json({
+        status: connected ? "ok" : "unavailable",
+        database: connected ? "connected" : "disconnected",
+      });
+    } catch {
+      res.status(503).json({ status: "unavailable", database: "disconnected" });
+    }
+  });
+
   // 1. Rate limiter global
   app.use(defaultLimiter);
 
@@ -65,8 +81,7 @@ async function startServer() {
   app.use(httpLogger);
 
   // 4. Configuración del almacenamiento de sesión (express-session)
-  // Por defecto usa MemoryStore en desarrollo. Se provee la configuración para PostgreSQL
-  // usando 'connect-pg-simple' lista para descomentar en producción.
+  // Sesiones compartidas en PostgreSQL en producción.
   let sessionStore: session.Store | undefined;
 
   if (env.NODE_ENV === "production") {
@@ -95,13 +110,13 @@ async function startServer() {
     })
   );
 
-  // Probar la conexión a la base de datos y crear tablas si no existen
+  // No aceptar tráfico si la base de datos no está disponible al iniciar.
   const dbConnected = await checkDbConnection();
-  if (dbConnected) {
-    // Ejecutar el bootstrap de usuario administrador inicial
+  if (!dbConnected) {
+    throw new Error("PostgreSQL no está disponible al iniciar.");
+  }
+  if (env.ENABLE_ADMIN_BOOTSTRAP) {
     await bootstrapAdminUser();
-  } else {
-    logger.warn("No se pudo establecer conexión inmediata a PostgreSQL. Reintente más tarde.");
   }
 
   // Rutas legacy de autenticación por sesión
@@ -123,15 +138,6 @@ async function startServer() {
   // Gateway público — para login de módulos externos (sin JWT del panel)
   app.use("/api/gateway", gatewayRouter);
 
-  // Health Check
-  app.get("/api/health", async (_req, res) => {
-    res.status(200).json({
-      status: "ok",
-      environment: env.NODE_ENV,
-      database: dbConnected ? "connected" : "disconnected",
-    });
-  });
-
   // 7. Integración con el Frontend (React + Vite / Estáticos)
   if (env.NODE_ENV === "production") {
     serveStatic(app);
@@ -147,6 +153,21 @@ async function startServer() {
   httpServer.listen(env.PORT, () => {
     logger.info(`Servidor Express levantado con éxito en: ${env.APP_URL}`);
   });
+
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      httpServer.close(async () => {
+        try {
+          await pool.end();
+          await sdk?.shutdown();
+          process.exit(0);
+        } catch (error) {
+          logger.error({ error }, "Error al detener el servidor.");
+          process.exit(1);
+        }
+      });
+    });
+  }
 }
 
 // Arrancar el backend de forma segura atrapando errores no controlados

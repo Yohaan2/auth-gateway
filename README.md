@@ -115,15 +115,20 @@ VITE_VIEWER_ROLE=auth-manager-viewer
 
 ### Con Docker (recomendado)
 
+Para una instalacion aislada **solo en localhost y sin TLS**, seguir
+`DESPLIEGUE_LOCAL.md`. Los pasos siguientes son para produccion.
+
 ```bash
-# Levanta Postgres + Keycloak
+# En el servidor aislado: carga antes las imagenes (ver DESPLIEGUE_PRODUCCION.md).
+# Configura .env y los certificados internos antes de iniciar.
 docker compose -f docker/docker-compose.yml up postgres keycloak -d
 
-# Espera ~30s a que Keycloak inicie, luego levanta la app
-docker compose -f docker/docker-compose.yml up app -d
+# Aplica las migraciones de la base de datos antes de arrancar la app.
+# La guia de produccion incluye el orden y los comandos.
+docker compose -f docker/docker-compose.yml up app nginx -d --no-build --pull never
 ```
 
-La app estará en `http://localhost:3000`.
+La app se publica unicamente a traves de Nginx (HTTPS). Ver `DESPLIEGUE_PRODUCCION.md`.
 
 ### Local (sin Docker)
 

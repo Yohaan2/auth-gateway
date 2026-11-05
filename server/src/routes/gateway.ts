@@ -19,6 +19,7 @@ import { sensitiveLimiter } from "../middleware/rate-limiter";
 import { createRemoteJWKSet, jwtVerify, decodeJwt } from "jose";
 
 const router = Router();
+const keycloakHttp = axios.create({ timeout: 10000 });
 
 // JWKS compartido para verificar tokens en /verify
 const getJWKS = (() => {
@@ -98,7 +99,7 @@ router.post("/login", sensitiveLimiter, async (req, res, next) => {
 
     let kcResponse: any;
     try {
-      const { data } = await axios.post(
+      const { data } = await keycloakHttp.post(
         `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
         params.toString(),
         {
@@ -209,7 +210,7 @@ router.post("/refresh", async (req, res, next) => {
     });
 
     try {
-      const { data } = await axios.post(
+      const { data } = await keycloakHttp.post(
         `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
         params.toString(),
         {
@@ -306,7 +307,7 @@ router.post("/logout", async (req, res, next) => {
         refresh_token,
       });
 
-      await axios
+      await keycloakHttp
         .post(
           `${kcBase}/realms/${env.KEYCLOAK_REALM}/protocol/openid-connect/logout`,
           params.toString(),

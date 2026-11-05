@@ -222,6 +222,28 @@
       }
     },
     {
+      "name": "basic",
+      "description": "OpenID Connect basic claims",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
       "name": "acr",
       "description": "Authentication Context Class Reference",
       "protocol": "openid-connect",
@@ -239,7 +261,7 @@
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "4qwu7xPz8Q2oViH0ZOQUrVizWuF2FQ3z",
+      "secret": "__SET_AT_DEPLOYMENT__",
       "bearerOnly": false,
       "consentRequired": false,
       "standardFlowEnabled": true,
@@ -251,6 +273,7 @@
       "webOrigins": [],
       "defaultClientScopes": [
         "web-origins",
+        "basic",
         "acr",
         "roles",
         "profile",
@@ -303,6 +326,7 @@
       "baseUrl": "https://auth.optrax.io",
       "defaultClientScopes": [
         "web-origins",
+        "basic",
         "acr",
         "roles",
         "profile",
@@ -338,7 +362,7 @@
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "oTgwcsQmQTNgaQvWq8aHa3nsMhuQttlo",
+      "secret": "__SET_AT_DEPLOYMENT__",
       "bearerOnly": false,
       "consentRequired": false,
       "standardFlowEnabled": false,
@@ -350,6 +374,7 @@
       "webOrigins": [],
       "defaultClientScopes": [
         "web-origins",
+        "basic",
         "acr",
         "roles",
         "profile",
@@ -382,6 +407,14 @@
       {
         "name": "AUDITOR",
         "description": "Acceso de solo lectura a los registros de auditoría del IAM"
+      },
+      {
+        "name": "access-core",
+        "description": "Módulo de Core"
+      },
+      {
+        "name": "access-perceiver",
+        "description": "Módulo de Perceiver"
       }
     ]
   },

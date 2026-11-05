@@ -5,6 +5,7 @@ import { db } from "../db/client";
 import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
+import { randomBytes } from "crypto";
 
 const router = Router();
 
@@ -17,8 +18,8 @@ router.get("/login", async (req, res, next) => {
     const client = await getKeycloakClient();
     
     // Generar state y nonce para proteger contra ataques CSRF y Replay
-    const state = Math.random().toString(36).substring(2, 15);
-    const nonce = Math.random().toString(36).substring(2, 15);
+    const state = randomBytes(32).toString("hex");
+    const nonce = randomBytes(32).toString("hex");
     
     // Guardar en la sesión temporal para validación posterior en el callback
     if (req.session) {
@@ -68,6 +69,11 @@ router.get("/callback", async (req, res, next) => {
     // Obtener información del usuario a través del Token o del Endpoint UserInfo
     const userInfo = await client.userinfo(tokenSet);
     
+    // Cambiar el ID de sesión después de autenticarse evita session fixation.
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((error) => error ? reject(error) : resolve());
+    });
+
     // Guardar tokens y usuario en la sesión de Express
     req.session.tokens = {
       access_token: tokenSet.access_token,

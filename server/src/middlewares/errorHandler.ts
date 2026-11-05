@@ -54,8 +54,10 @@ export function errorHandler(err: CustomError, req: Request, res: Response, _nex
     return res.status(translated.status).json({ error: translated.message });
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Ha ocurrido un error interno en el servidor.";
+  const statusCode = err.statusCode && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
+  const message = statusCode >= 500 && process.env.NODE_ENV === "production"
+    ? "Ha ocurrido un error interno en el servidor."
+    : err.message || "Ha ocurrido un error interno en el servidor.";
 
   logger.error({
     msg: `Error capturado: ${message}`,

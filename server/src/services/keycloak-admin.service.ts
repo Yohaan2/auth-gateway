@@ -144,7 +144,7 @@ class KeycloakAdminService {
 
   constructor() {
     const baseURL = env.KEYCLOAK_INTERNAL_URL || env.KEYCLOAK_URL;
-    this.http = axios.create({ baseURL });
+    this.http = axios.create({ baseURL, timeout: 10000 });
   }
 
   // Devuelve el access_token de la service account, renovándolo si está próximo a expirar
