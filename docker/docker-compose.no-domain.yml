@@ -1,21 +1,18 @@
 # Stack completo para VPS sin DNS ni TLS (HTTP por IP, puerto 80).
-# Desde la raíz del repo (siempre --env-file y --project-directory):
-#   docker compose --env-file .env --project-directory . \
-#     -f docker/docker-compose.no-domain.yml up -d --build
+# Desde la raíz del repo (project-directory = raíz; rutas relativas a la raíz):
+#   sudo docker compose --env-file .env --project-directory . -f docker/docker-compose.no-domain.yml up -d --build
 #
-# .env: APP_URL, KEYCLOAK_URL, VITE_* con http://<IP> (ver DESPLIEGUE_SIN_DOMINIO.md)
-# Si existe docker/.env con una IP vieja, bórralo.
-# Interpolación ${APP_URL}: siempre --env-file .env --project-directory . desde la raíz del repo.
+# .env: APP_URL, KEYCLOAK_URL, VITE_* (ver DESPLIEGUE_SIN_DOMINIO.md)
 
 services:
   realm-prepare:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.realm-prepare
     container_name: auth-optrax-realm-prepare
     volumes:
-      - ../.env:/env/.env:ro
-      - ./generated:/work/generated
+      - .env:/env/.env:ro
+      - docker/generated:/work/generated
     restart: "no"
     networks:
       - optrax-network
@@ -25,12 +22,12 @@ services:
     container_name: auth-optrax-postgres
     restart: unless-stopped
     env_file:
-      - ../.env
+      - .env
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d:ro
-      - ../server/drizzle/0000_productive_selene.sql:/opt/optrax-schema/0000.sql:ro
-      - ../server/drizzle/production-iam-users.sql:/opt/optrax-schema/0001.sql:ro
+      - docker/postgres-init:/docker-entrypoint-initdb.d:ro
+      - server/drizzle/0000_productive_selene.sql:/opt/optrax-schema/0000.sql:ro
+      - server/drizzle/production-iam-users.sql:/opt/optrax-schema/0001.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-auth_optrax}"]
       interval: 5s
@@ -44,13 +41,12 @@ services:
     container_name: auth-optrax-keycloak
     command: start --import-realm
     env_file:
-      - ../.env
+      - .env
     environment:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_PROXY_HEADERS: "xforwarded"
-      # Origen público sin /auth (el path lo añade KC_HTTP_RELATIVE_PATH). KEYCLOAK_URL=APP_URL/auth
       KC_HOSTNAME: ${APP_URL:?Definir APP_URL en .env, ej. http://203.0.113.10}
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
@@ -60,7 +56,7 @@ services:
       realm-prepare:
         condition: service_completed_successfully
     volumes:
-      - ./generated/realm.json:/opt/keycloak/data/import/realm.json:ro
+      - docker/generated/realm.json:/opt/keycloak/data/import/realm.json:ro
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
       interval: 10s
@@ -73,7 +69,7 @@ services:
   app:
     image: auth-optrax-app:1.0.0
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
       args:
         VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:?Definir VITE_KEYCLOAK_URL en .env}
@@ -84,7 +80,7 @@ services:
     container_name: auth-optrax-app
     restart: unless-stopped
     env_file:
-      - ../.env
+      - .env
     environment:
       INSECURE_HTTP: "true"
       KEYCLOAK_ALLOWED_CLIENT_IDS: ${KEYCLOAK_ALLOWED_CLIENT_IDS:-optrax-frontend}
@@ -113,7 +109,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ../nginx/default.no-domain.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx/default.no-domain.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - optrax-network
 
@@ -152,7 +148,7 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     restart: unless-stopped
     env_file:
-      - ../.env
+      - .env
     networks:
       - optrax-network
 
@@ -164,7 +160,7 @@ services:
     volumes:
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - ./promtail-config.yml:/etc/promtail/config.yml
+      - docker/promtail-config.yml:/etc/promtail/config.yml
     command:
       - -config.file=/etc/promtail/config.yml
     networks:
