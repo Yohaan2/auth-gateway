@@ -52,8 +52,8 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_PROXY_HEADERS: "xforwarded"
-      KC_HOSTNAME: ${KEYCLOAK_URL:?Definir KEYCLOAK_URL en .env, ej. http://203.0.113.10/auth}
-      KC_HOSTNAME_ADMIN: ${KEYCLOAK_URL:?Definir KEYCLOAK_URL en .env}
+      # Origen público sin /auth (el path lo añade KC_HTTP_RELATIVE_PATH). KEYCLOAK_URL=APP_URL/auth
+      KC_HOSTNAME: ${APP_URL:?Definir APP_URL en .env, ej. http://203.0.113.10}
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
     depends_on:

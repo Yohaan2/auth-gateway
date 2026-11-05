@@ -48,8 +48,9 @@ docker compose --env-file .env --project-directory . \
 Comprueba **antes** de confiar en el navegador:
 
 ```bash
-sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME
-# Debe ser igual a KEYCLOAK_URL del .env, p. ej. http://10.232.102.118/auth
+sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME KC_HTTP_RELATIVE_PATH
+# KC_HOSTNAME = APP_URL (sin /auth), p. ej. http://10.232.102.118
+# KEYCLOAK_URL en .env = APP_URL + /auth
 
 docker compose --env-file .env --project-directory . \
   -f docker/docker-compose.no-domain.yml config | grep KC_HOSTNAME
@@ -94,7 +95,9 @@ acceso desde la consola **iBMC**, que usa otra IP).
 En el servidor, la cadena no debe repetirse:
 
 ```bash
-curl -sI -L --max-redirs 5 http://10.232.102.118/auth/admin/ | grep -E '^(HTTP|Location:)'
+# El primer 302 debe ir a .../admin/master/console/, NO al mismo /admin/
+curl -sI http://10.232.102.118/auth/admin/ | grep -E '^(HTTP|Location:)'
+curl -sI http://10.232.102.118/auth/admin/master/console/ | grep -E '^(HTTP|Location:)'
 ```
 
 Tras cambiar nginx: `docker restart auth-optrax-nginx`.
