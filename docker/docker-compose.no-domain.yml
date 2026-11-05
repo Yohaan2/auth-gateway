@@ -46,8 +46,10 @@ services:
     environment:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_PROXY_HEADERS: "xforwarded"
       KC_HOSTNAME: ${KEYCLOAK_URL:?Definir KEYCLOAK_URL en .env, ej. http://203.0.113.10/auth}
+      KC_HOSTNAME_ADMIN: ${KEYCLOAK_URL:?Definir KEYCLOAK_URL en .env}
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
     depends_on:

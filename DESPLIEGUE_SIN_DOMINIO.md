@@ -49,7 +49,19 @@ Opcional en local con Node: `node docker/prepare-realm.cjs .env`
 Archivo **`nginx/default.no-domain.conf`** (no `default.conf`, que asume HTTPS y
 certificados en `docker/certs/`).
 
-## 4. Limitaciones
+## 4. Redirección a una IP/host antigua (p. ej. iBMC)
+
+Keycloak guarda `frontend_url` en Postgres. Si el navegador salta a otra IP tras
+cambiar `.env`, ejecuta desde la raíz del repo:
+
+```bash
+bash docker/fix-keycloak-hostname.sh
+docker restart auth-optrax-keycloak auth-optrax-nginx
+```
+
+Comprueba en `.env` que `KEYCLOAK_URL` sea `http://<IP>/auth` **sin** `:8000` ni `:3000`.
+
+## 5. Limitaciones
 
 - Todo el tráfico va en **HTTP**; no usar en Internet abierto sin otra capa de seguridad.
 - Los redirect URIs de los clientes Keycloak deben coincidir con `APP_URL` y rutas OIDC.
