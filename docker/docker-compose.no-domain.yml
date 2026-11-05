@@ -1,0 +1,18 @@
+# Override para un VPS sin DNS ni certificados: solo puerto 80 y proxy HTTP.
+# Requiere .env con URLs basadas en IP, p. ej. http://203.0.113.10
+#
+#   node docker/prepare-realm.cjs .env
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.no-domain.yml build app
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.no-domain.yml up -d
+
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME: ${KEYCLOAK_URL:?Definir KEYCLOAK_URL en .env, ej. http://203.0.113.10/auth}
+
+  nginx:
+    ports: !override
+      - "80:80"
+    volumes: !override
+      - ../nginx/default.no-domain.conf:/etc/nginx/conf.d/default.conf:ro
