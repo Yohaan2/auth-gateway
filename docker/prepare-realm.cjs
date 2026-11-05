@@ -35,6 +35,7 @@ frontend.adminUrl = origin;
 const target = path.resolve(process.argv[3] || path.join(__dirname, "generated"));
 fs.mkdirSync(target, { recursive: true });
 const output = path.join(target, "realm.json");
-fs.writeFileSync(output, JSON.stringify(template, null, 2), { mode: 0o600 });
-fs.chmodSync(output, 0o600);
+// 644: Keycloak corre sin root y debe leer el JSON montado desde el host (import --import-realm).
+fs.writeFileSync(output, JSON.stringify(template, null, 2), { mode: 0o644 });
+fs.chmodSync(output, 0o644);
 console.log("Realm generado en directorio no versionado.");
