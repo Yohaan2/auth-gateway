@@ -1,5 +1,6 @@
-# Override para un VPS sin DNS ni certificados: solo puerto 80 y proxy HTTP.
-# Requiere .env con URLs basadas en IP, p. ej. http://203.0.113.10
+# Override para VPS sin DNS: nginx en 0.0.0.0:80 (acceso http://<IP>/), sin TLS.
+# .env: APP_URL, KEYCLOAK_URL, VITE_* con la IP pública (ver .env.example y DESPLIEGUE_SIN_DOMINIO.md).
+# No confundir con docker-compose.local.yml (127.0.0.1:19080).
 #
 #   node docker/prepare-realm.cjs .env
 #   docker compose -f docker/docker-compose.yml -f docker/docker-compose.no-domain.yml build app

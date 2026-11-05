@@ -1,7 +1,20 @@
 # Despliegue sin dominio (solo IP, HTTP)
 
-Para un servidor sin DNS ni certificados TLS. Nginx escucha en el puerto **80** y
-expone la app en `/` y Keycloak en `/auth/`.
+Para un servidor sin DNS ni certificados TLS.
+
+## ¿Localhost o IP?
+
+| Modo | Compose | Nginx | Cómo entras |
+|------|---------|-------|-------------|
+| **Desarrollo local** | `docker-compose.local.yml` | `local.conf` | `http://127.0.0.1:19080` (solo esta máquina) |
+| **Servidor por IP** | `docker-compose.no-domain.yml` | `default.no-domain.conf` | `http://<IP-del-VPS>/` desde cualquier cliente |
+
+El override **no-domain** publica **`80:80` en todas las interfaces** (`0.0.0.0`).
+No uses `localhost` en el `.env` salvo que solo pruebes en el mismo host; los
+navegadores y otros servidores deben usar la **IP pública** (o la IP LAN si es
+red interna).
+
+Nginx expone la app en `/` y Keycloak en `/auth/`.
 
 ## 1. Variables en `.env`
 
