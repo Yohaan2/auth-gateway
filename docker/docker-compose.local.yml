@@ -1,0 +1,35 @@
+services:
+  postgres:
+    container_name: auth-optrax-local-postgres
+    env_file: !override
+      - ./local/.env
+    volumes:
+      - local_pgdata:/var/lib/postgresql/data
+  keycloak:
+    container_name: auth-optrax-local-keycloak
+    env_file: !override
+      - ./local/.env
+    environment:
+      KC_HOSTNAME: http://localhost:19080/auth
+    volumes:
+      - ./local/realm.json:/opt/keycloak/data/import/realm.json:ro
+  app:
+    container_name: auth-optrax-local-app
+    image: auth-optrax-app:local
+    env_file: !override
+      - ./local/.env
+  nginx:
+    container_name: auth-optrax-local-nginx
+    ports: !override
+      - "127.0.0.1:19080:80"
+    volumes: !override
+      - ../nginx/local.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  local_pgdata:
+
+networks:
+  optrax-network:
+    ipam:
+      config:
+        - subnet: 10.254.222.0/24
