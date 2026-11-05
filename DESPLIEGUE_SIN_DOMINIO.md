@@ -49,8 +49,7 @@ Comprueba **antes** de confiar en el navegador:
 
 ```bash
 sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME KC_HTTP_RELATIVE_PATH
-# KC_HOSTNAME = APP_URL (sin /auth), p. ej. http://10.232.102.118
-# KEYCLOAK_URL en .env = APP_URL + /auth
+# KC_HOSTNAME = KEYCLOAK_URL (con /auth), p. ej. http://10.232.102.118/auth
 
 docker compose --env-file .env --project-directory . \
   -f docker/docker-compose.no-domain.yml config | grep KC_HOSTNAME
@@ -102,7 +101,17 @@ curl -sI http://10.232.102.118/auth/admin/master/console/ | grep -E '^(HTTP|Loca
 
 Tras cambiar nginx: `docker restart auth-optrax-nginx`.
 
-## 6. Limitaciones
+## 6. Dos URLs distintas (no mezclar)
+
+| Qué quieres | URL |
+|-------------|-----|
+| **Consola Keycloak** (crear usuarios, realm) | `http://<IP>/auth/admin/` |
+| **Auth Manager** (panel optrax, login OIDC) | `http://<IP>/` |
+
+Si caes en `/admin/` con error *accept header…*, es la SPA: usa **`/auth/admin/`** o
+actualiza nginx y Keycloak (`git pull`, recrea `keycloak`, `restart nginx`).
+
+## 7. Limitaciones
 
 - Todo el tráfico va en **HTTP**; no usar en Internet abierto sin otra capa de seguridad.
 - Los redirect URIs de los clientes Keycloak deben coincidir con `APP_URL` y rutas OIDC.
