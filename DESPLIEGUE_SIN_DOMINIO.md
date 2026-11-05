@@ -48,8 +48,8 @@ docker compose --env-file .env --project-directory . \
 Comprueba **antes** de confiar en el navegador:
 
 ```bash
-sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME KC_HTTP_RELATIVE_PATH
-# KC_HOSTNAME = KEYCLOAK_URL (con /auth), p. ej. http://10.232.102.118/auth
+sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME KC_HOSTNAME_ADMIN KC_HTTP_RELATIVE_PATH
+# KC_HOSTNAME = APP_URL (sin /auth); KC_HOSTNAME_ADMIN = KEYCLOAK_URL (con /auth)
 
 docker compose --env-file .env --project-directory . \
   -f docker/docker-compose.no-domain.yml config | grep KC_HOSTNAME
@@ -85,8 +85,9 @@ El stack **solo expone HTTP en el puerto 80**. Si la barra de direcciones muestr
 **`https://`**, Chrome puede entrar en bucle (cookies de intentos anteriores o
 acceso desde la consola **iBMC**, que usa otra IP).
 
-1. Abre en ventana privada y escribe **a mano**: `http://10.232.102.118/auth/admin/`
-   (con **`http://`**, no dejes que el navegador ponga `https`).
+1. Abre en ventana privada con **`http://`** (no `https`). Prueba en este orden:
+   - `http://<IP>/auth/admin/master/console/`
+   - `http://<IP>/auth/admin/`
 2. Pulsa **Eliminar cookies** en la página de error o borra datos del sitio para
    esa IP.
 3. Prueba desde otro navegador o PC (no solo la pestaña embebida del iBMC).
