@@ -81,6 +81,9 @@ services:
     restart: unless-stopped
     env_file:
       - ../.env
+    environment:
+      INSECURE_HTTP: "true"
+      KEYCLOAK_ALLOWED_CLIENT_IDS: ${KEYCLOAK_ALLOWED_CLIENT_IDS:-optrax-frontend}
     depends_on:
       postgres:
         condition: service_healthy

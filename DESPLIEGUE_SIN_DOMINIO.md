@@ -30,6 +30,7 @@ VITE_KEYCLOAK_URL=http://203.0.113.10/auth
 ```
 
 El resto de secretos y Postgres igual que en `DESPLIEGUE_PRODUCCION.md`.
+El compose no-domain define `INSECURE_HTTP=true` y `KEYCLOAK_ALLOWED_CLIENT_IDS` por defecto en el servicio `app`.
 
 ## 2. Build y arranque
 

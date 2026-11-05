@@ -14,6 +14,8 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(8, "SESSION_SECRET debe tener al menos 8 caracteres"),
   ENABLE_ADMIN_BOOTSTRAP: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   LOCAL_HTTP_ONLY: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
+  /** Despliegue HTTP sin TLS (p. ej. IP + docker-compose.no-domain.yml). */
+  INSECURE_HTTP: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
 
   // Base de datos (Postgres)
   DATABASE_URL: z.string().url(),
@@ -67,7 +69,17 @@ const parsed = envSchema.superRefine((config, ctx) => {
   if (config.LOCAL_HTTP_ONLY && !localhostHttp) {
     ctx.addIssue({ code: "custom", path: ["LOCAL_HTTP_ONLY"], message: "HTTP local solo permite URLs http://localhost." });
   }
-  if (config.NODE_ENV === "production" && !localhostHttp &&
+  const insecureHttpDeploy =
+    config.INSECURE_HTTP &&
+    [config.APP_URL, config.FRONTEND_URL, config.KEYCLOAK_URL].every((value) => value.startsWith("http://"));
+  if (config.INSECURE_HTTP && !insecureHttpDeploy) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["INSECURE_HTTP"],
+      message: "INSECURE_HTTP exige APP_URL, FRONTEND_URL y KEYCLOAK_URL en http://.",
+    });
+  }
+  if (config.NODE_ENV === "production" && !localhostHttp && !insecureHttpDeploy &&
       (!config.APP_URL.startsWith("https://") || !config.KEYCLOAK_URL.startsWith("https://"))) {
     ctx.addIssue({ code: "custom", message: "APP_URL y KEYCLOAK_URL deben usar HTTPS en producción." });
   }

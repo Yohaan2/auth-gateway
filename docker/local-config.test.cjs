@@ -40,3 +40,16 @@ test("el permiso local no autoriza dominios ni IPs externas", () => {
   assert.notEqual(load({ LOCAL_HTTP_ONLY: "true", APP_URL: "http://192.168.1.5:19080" }), 0);
   assert.notEqual(load({ LOCAL_HTTP_ONLY: "true", KEYCLOAK_URL: "http://example.com/auth" }), 0);
 });
+
+test("HTTP por IP con INSECURE_HTTP pasa en producción", () => {
+  assert.equal(
+    load({
+      INSECURE_HTTP: "true",
+      APP_URL: "http://10.0.10.16",
+      FRONTEND_URL: "http://10.0.10.16",
+      KEYCLOAK_URL: "http://10.0.10.16/auth",
+      KEYCLOAK_ALLOWED_CLIENT_IDS: "optrax-frontend",
+    }),
+    0
+  );
+});
