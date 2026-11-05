@@ -38,9 +38,25 @@ Compose ejecuta **`realm-prepare`** antes de Keycloak (genera `docker/generated/
 No hace falta Node en el host.
 
 ```bash
-docker compose -f docker/docker-compose.no-domain.yml build
-docker compose -f docker/docker-compose.no-domain.yml up -d
+# Obligatorio desde la raíz del repo (si no, KC_HOSTNAME puede quedar con una IP vieja):
+docker compose --env-file .env --project-directory . \
+  -f docker/docker-compose.no-domain.yml build
+docker compose --env-file .env --project-directory . \
+  -f docker/docker-compose.no-domain.yml up -d
 ```
+
+Comprueba **antes** de confiar en el navegador:
+
+```bash
+sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME
+# Debe ser igual a KEYCLOAK_URL del .env, p. ej. http://10.232.102.118/auth
+
+docker compose --env-file .env --project-directory . \
+  -f docker/docker-compose.no-domain.yml config | grep KC_HOSTNAME
+```
+
+Si sigue saliendo otra IP, revisa que **no** exista `docker/.env` antiguo (`rm -f docker/.env`).
+Corrige también `FRONTEND_URL` (debe coincidir con `APP_URL`, no otro octeto).
 
 Opcional en local con Node: `node docker/prepare-realm.cjs .env`
 
@@ -56,7 +72,9 @@ cambiar `.env`, ejecuta desde la raíz del repo:
 
 ```bash
 bash docker/fix-keycloak-hostname.sh
-docker restart auth-optrax-keycloak auth-optrax-nginx
+docker compose --env-file .env --project-directory . \
+  -f docker/docker-compose.no-domain.yml up -d --force-recreate keycloak
+docker restart auth-optrax-nginx
 ```
 
 Comprueba en `.env` que `KEYCLOAK_URL` sea `http://<IP>/auth` **sin** `:8000` ni `:3000`.

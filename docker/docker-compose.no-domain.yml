@@ -1,9 +1,13 @@
 # Stack completo para VPS sin DNS ni TLS (HTTP por IP, puerto 80).
-# Desde la raíz del repo:
-#   docker compose -f docker/docker-compose.no-domain.yml build
-#   docker compose -f docker/docker-compose.no-domain.yml up -d
+# Desde la raíz del repo (siempre --env-file y --project-directory):
+#   docker compose --env-file .env --project-directory . \
+#     -f docker/docker-compose.no-domain.yml up -d --build
 #
 # .env: APP_URL, KEYCLOAK_URL, VITE_* con http://<IP> (ver DESPLIEGUE_SIN_DOMINIO.md)
+# Si existe docker/.env con una IP vieja, bórralo: pisa KC_HOSTNAME al interpolar.
+
+env_file:
+  - ../.env
 
 services:
   realm-prepare:
