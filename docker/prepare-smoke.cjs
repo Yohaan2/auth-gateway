@@ -9,6 +9,7 @@ const password = randomBytes(32).toString("hex");
 const values = {
   NODE_ENV: "production",
   PORT: "3000",
+  DOMAIN: "auth.optrax.io",
   APP_URL: "https://auth.optrax.io",
   FRONTEND_URL: "https://auth.optrax.io",
   SESSION_SECRET: randomBytes(32).toString("hex"),

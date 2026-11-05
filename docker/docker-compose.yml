@@ -47,7 +47,7 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "true"
       KC_PROXY_HEADERS: "xforwarded"
-      KC_HOSTNAME: "https://auth.optrax.io/auth"
+      KC_HOSTNAME: ${KEYCLOAK_URL:?Definir KEYCLOAK_URL en .env, ej. https://auth.example.com/auth}
       KC_HTTP_RELATIVE_PATH: "/auth"
       KC_DB: "postgres"
     depends_on:
@@ -115,8 +115,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      # nginx:alpine sustituye ${DOMAIN} en /etc/nginx/templates/*.template al arrancar.
+      DOMAIN: ${DOMAIN:?Definir DOMAIN en .env, ej. auth.example.com}
     volumes:
-      - ../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../nginx/default.conf:/etc/nginx/templates/default.conf.template:ro
       - ./certs:/etc/nginx/certs:ro
     networks:
       - optrax-network

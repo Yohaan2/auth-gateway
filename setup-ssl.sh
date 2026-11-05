@@ -4,6 +4,9 @@
 # Script de Configuración SSL Automatizado para Auth Optrax
 # Dominio: auth.optrax.io
 # ==============================================================================
+# ATENCIÓN: obsoleto. docker/docker-compose.yml ya no define el servicio `certbot` y
+# nginx lee docker/certs/{fullchain,privkey}.pem. Para Let's Encrypt usa
+# DESPLIEGUE_SIN_DOMINIO.md §8 (certbot en el host y copiar los .pem a docker/certs/).
 
 # Detener el script si ocurre algún error
 set -e
