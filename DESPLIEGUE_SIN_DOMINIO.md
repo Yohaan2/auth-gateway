@@ -48,8 +48,8 @@ docker compose --env-file .env --project-directory . \
 Comprueba **antes** de confiar en el navegador:
 
 ```bash
-sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME KC_HOSTNAME_ADMIN KC_HTTP_RELATIVE_PATH
-# KC_HOSTNAME = APP_URL (sin /auth); KC_HOSTNAME_ADMIN = KEYCLOAK_URL (con /auth)
+sudo docker exec auth-optrax-keycloak printenv KC_HOSTNAME KC_HTTP_RELATIVE_PATH
+# KC_HOSTNAME = KEYCLOAK_URL (con /auth). Tras fix-keycloak-hostname.sh, master.frontend_url debe ser NULL.
 
 docker compose --env-file .env --project-directory . \
   -f docker/docker-compose.no-domain.yml config | grep KC_HOSTNAME

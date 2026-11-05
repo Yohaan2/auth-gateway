@@ -34,8 +34,10 @@ WHERE frontend_url IS NOT NULL AND frontend_url LIKE '%${OLD_HOST}%';
 
 UPDATE realm
 SET frontend_url = '${KC_URL}'
-WHERE name IN ('master', 'optrax-realm')
-  AND (frontend_url IS NULL OR frontend_url = '' OR frontend_url LIKE '%${OLD_HOST}%');
+WHERE name = 'optrax-realm';
+
+-- master: frontend_url fija rompe /auth/admin/ (bucle 302); la consola usa KC_HOSTNAME*.
+UPDATE realm SET frontend_url = NULL WHERE name = 'master';
 
 SELECT name, frontend_url FROM realm;
 
