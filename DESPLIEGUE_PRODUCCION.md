@@ -55,8 +55,10 @@ Agregar `POSTGRES_PASSWORD`, `KC_DB_PASSWORD` (el mismo password),
 `KC_BOOTSTRAP_ADMIN_PASSWORD` aleatorios para la consola master. No poner
 passwords en `VITE_*`: se publican en el navegador.
 
-En esa estacion ejecutar `node docker/prepare-realm.cjs .env`. Transferir
-el archivo ignorado `docker/generated/realm.json` de forma segura al host.
+En el host, Compose ejecuta el servicio `realm-prepare` antes de Keycloak
+(genera `docker/generated/realm.json` desde `.env`). Alternativa manual:
+`node docker/prepare-realm.cjs .env`. Transferir `docker/generated/realm.json`
+al servidor solo si se generó fuera del host.
 Contiene los secrets de `optrax-app` y `auth-manager-sa`: el JSON versionado
 es solo una plantilla sin claves utilizables. Si el realm ya existe,
 Keycloak **ignora el import**: actualizar sus secretos en la consola,

@@ -1,12 +1,23 @@
 # Stack completo para VPS sin DNS ni TLS (HTTP por IP, puerto 80).
 # Desde la raíz del repo:
-#   node docker/prepare-realm.cjs .env
-#   docker compose -f docker/docker-compose.no-domain.yml build app
+#   docker compose -f docker/docker-compose.no-domain.yml build
 #   docker compose -f docker/docker-compose.no-domain.yml up -d
 #
 # .env: APP_URL, KEYCLOAK_URL, VITE_* con http://<IP> (ver DESPLIEGUE_SIN_DOMINIO.md)
 
 services:
+  realm-prepare:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.realm-prepare
+    container_name: auth-optrax-realm-prepare
+    volumes:
+      - ../.env:/env/.env:ro
+      - ./generated:/work/generated
+    restart: "no"
+    networks:
+      - optrax-network
+
   postgres:
     image: postgres:15-alpine
     container_name: auth-optrax-postgres
@@ -42,6 +53,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      realm-prepare:
+        condition: service_completed_successfully
     volumes:
       - ./generated/realm.json:/opt/keycloak/data/import/realm.json:ro
     healthcheck:

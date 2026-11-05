@@ -31,13 +31,17 @@ VITE_KEYCLOAK_URL=http://203.0.113.10/auth
 
 El resto de secretos y Postgres igual que en `DESPLIEGUE_PRODUCCION.md`.
 
-## 2. Realm y build
+## 2. Build y arranque
+
+Compose ejecuta **`realm-prepare`** antes de Keycloak (genera `docker/generated/realm.json` desde `.env`).
+No hace falta Node en el host.
 
 ```bash
-node docker/prepare-realm.cjs .env
-docker compose -f docker/docker-compose.no-domain.yml build app
+docker compose -f docker/docker-compose.no-domain.yml build
 docker compose -f docker/docker-compose.no-domain.yml up -d
 ```
+
+Opcional en local con Node: `node docker/prepare-realm.cjs .env`
 
 ## 3. Nginx usado
 

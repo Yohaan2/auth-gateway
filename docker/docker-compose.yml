@@ -1,4 +1,17 @@
 services:
+  # Genera docker/generated/realm.json desde .env antes de Keycloak
+  realm-prepare:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.realm-prepare
+    container_name: auth-optrax-realm-prepare
+    volumes:
+      - ../.env:/env/.env:ro
+      - ./generated:/work/generated
+    restart: "no"
+    networks:
+      - optrax-network
+
   # ==========================================
   # BASE DE DATOS (POSTGRESQL)
   # ==========================================
@@ -40,6 +53,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      realm-prepare:
+        condition: service_completed_successfully
     # No exponemos el puerto 8080 al exterior para obligar a usar el puerto 443 (HTTPS) de Nginx
     # Keycloak sigue siendo accesible internamente dentro de la red Docker en el puerto 8080
     volumes:
