@@ -4,10 +4,8 @@
 #     -f docker/docker-compose.no-domain.yml up -d --build
 #
 # .env: APP_URL, KEYCLOAK_URL, VITE_* con http://<IP> (ver DESPLIEGUE_SIN_DOMINIO.md)
-# Si existe docker/.env con una IP vieja, bórralo: pisa KC_HOSTNAME al interpolar.
-
-env_file:
-  - ../.env
+# Si existe docker/.env con una IP vieja, bórralo.
+# Interpolación ${APP_URL}: siempre --env-file .env --project-directory . desde la raíz del repo.
 
 services:
   realm-prepare:
