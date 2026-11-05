@@ -79,7 +79,27 @@ docker restart auth-optrax-nginx
 
 Comprueba en `.env` que `KEYCLOAK_URL` sea `http://<IP>/auth` **sin** `:8000` ni `:3000`.
 
-## 5. Limitaciones
+## 5. `ERR_TOO_MANY_REDIRECTS` en el navegador
+
+El stack **solo expone HTTP en el puerto 80**. Si la barra de direcciones muestra
+**`https://`**, Chrome puede entrar en bucle (cookies de intentos anteriores o
+acceso desde la consola **iBMC**, que usa otra IP).
+
+1. Abre en ventana privada y escribe **a mano**: `http://10.232.102.118/auth/admin/`
+   (con **`http://`**, no dejes que el navegador ponga `https`).
+2. Pulsa **Eliminar cookies** en la página de error o borra datos del sitio para
+   esa IP.
+3. Prueba desde otro navegador o PC (no solo la pestaña embebida del iBMC).
+
+En el servidor, la cadena no debe repetirse:
+
+```bash
+curl -sI -L --max-redirs 5 http://10.232.102.118/auth/admin/ | grep -E '^(HTTP|Location:)'
+```
+
+Tras cambiar nginx: `docker restart auth-optrax-nginx`.
+
+## 6. Limitaciones
 
 - Todo el tráfico va en **HTTP**; no usar en Internet abierto sin otra capa de seguridad.
 - Los redirect URIs de los clientes Keycloak deben coincidir con `APP_URL` y rutas OIDC.

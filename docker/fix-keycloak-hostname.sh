@@ -38,6 +38,10 @@ WHERE name IN ('master', 'optrax-realm')
   AND (frontend_url IS NULL OR frontend_url = '' OR frontend_url LIKE '%${OLD_HOST}%');
 
 SELECT name, frontend_url FROM realm;
+
+-- HTTP sin TLS: evita que el admin exija https (master por defecto).
+UPDATE realm SET ssl_required = 'NONE' WHERE name IN ('master', 'optrax-realm');
+SELECT name, ssl_required FROM realm;
 SQL
 
 echo "Reinicia: docker restart auth-optrax-keycloak auth-optrax-nginx"
