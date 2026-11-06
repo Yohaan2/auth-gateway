@@ -23,6 +23,12 @@ set +a
 : "${POSTGRES_USER:?POSTGRES_USER en .env}"
 : "${KEYCLOAK_URL:?KEYCLOAK_URL en .env}"
 
+# Solo modo HTTP por IP: el script pone ssl_required=NONE, inaceptable con HTTPS real.
+if [[ "$KEYCLOAK_URL" == https://* ]]; then
+  echo "KEYCLOAK_URL es https://: este script es solo para HTTP por IP. Abortado." >&2
+  exit 1
+fi
+
 KC_URL="${KEYCLOAK_URL//\'/''}"
 
 echo "realm.frontend_url → $KC_URL (quitar referencias a $OLD_HOST)"

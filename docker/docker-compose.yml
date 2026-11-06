@@ -117,7 +117,8 @@ services:
       - "443:443"
     environment:
       # nginx:alpine sustituye ${DOMAIN} en /etc/nginx/templates/*.template al arrancar.
-      DOMAIN: ${DOMAIN:?Definir DOMAIN en .env, ej. auth.example.com}
+      # Con HTTPS debe ser el dominio real; en modo IP (docker-compose.no-domain.yml) no se usa.
+      DOMAIN: ${DOMAIN:-_}
     volumes:
       - ../nginx/default.conf:/etc/nginx/templates/default.conf.template:ro
       - ./certs:/etc/nginx/certs:ro
