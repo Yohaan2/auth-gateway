@@ -121,6 +121,7 @@ services:
       DOMAIN: ${DOMAIN:-_}
     volumes:
       - ../nginx/default.conf:/etc/nginx/templates/default.conf.template:ro
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
     networks:
       - optrax-network
