@@ -11,6 +11,7 @@ import {
 } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RoleDualList from "../components/RoleDualList";
+import UserClientRoles from "../components/UserClientRoles";
 import LoadingButton from "../components/LoadingButton";
 import { useRoles } from "../auth/useRoles";
 import { useIamAccess } from "../auth/useIamAccess";
@@ -450,6 +451,17 @@ export default function UserDetail() {
               disabled={false}
             />
           )}
+        </Section>
+      )}
+
+      {/* Roles de módulos (clientes): p. ej. vstation → operator, tab-mapa. Asignarlos exige administrador. */}
+      {isAdmin && (
+        <Section title="Roles de módulos">
+          <UserClientRoles
+            userId={id!}
+            mappings={roleMappingsQ.data}
+            onChanged={() => qc.invalidateQueries({ queryKey: ["user-roles", id] })}
+          />
         </Section>
       )}
 

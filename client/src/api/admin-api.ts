@@ -77,6 +77,28 @@ export interface KcSession {
   clients?: Record<string, string>;
 }
 
+/** Rol del preset de vstation y si ya existe en Keycloak. */
+export interface VstationPresetRole {
+  name: string;
+  description: string;
+  kind: "access" | "level" | "tab";
+  exists: boolean;
+}
+
+export interface VstationPresetStatus {
+  clientId: string;
+  clientUuid: string | null;
+  realmRoles: VstationPresetRole[];
+  clientRoles: VstationPresetRole[];
+  missing: number;
+}
+
+export interface KcClientSummary {
+  id: string;
+  clientId: string;
+  name?: string;
+}
+
 export interface KcRoleMappings {
   realmMappings?: KcRole[];
   clientMappings?: Record<string, { id: string; client: string; mappings: KcRole[] }>;
@@ -240,6 +262,15 @@ export const clientsApi = {
 
   getRoleUsers: (id: string, roleName: string) =>
     api.get<KcUser[]>(`/clients/${id}/roles/${encodeURIComponent(roleName)}/users`).then((r) => r.data),
+
+  /** Qué roles necesarios para vstation (acceso, nivel, pestañas) existen ya. */
+  getVstationPreset: () => api.get<VstationPresetStatus>("/clients/presets/vstation").then((r) => r.data),
+
+  /** Crea los roles de vstation que falten (no toca los existentes). */
+  applyVstationPreset: () =>
+    api
+      .post<{ created: string[]; status: VstationPresetStatus }>("/clients/presets/vstation/apply")
+      .then((r) => r.data),
 };
 
 // ─── Plantillas de Acceso (Access Templates) — Fase 3 ────────────────────────
@@ -354,6 +385,12 @@ export const templatesApi = {
   delete: (id: string) => api.delete(`/templates/${id}`).then((r) => r.data),
 
   listKeycloakRoles: () => api.get<KcRole[]>("/templates/keycloak/roles").then((r) => r.data),
+
+  listKeycloakClients: () =>
+    api.get<KcClientSummary[]>("/templates/keycloak/clients").then((r) => r.data),
+
+  listKeycloakClientRoles: (clientUuid: string) =>
+    api.get<KcRole[]>(`/templates/keycloak/clients/${clientUuid}/roles`).then((r) => r.data),
 
   listKeycloakGroups: () =>
     api

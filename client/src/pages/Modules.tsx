@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus, Lock, CheckCircle, XCircle,
-  Power, PowerOff, Pencil, X,
+  Power, PowerOff, Pencil, X, KeyRound,
 } from "lucide-react";
 import { clientsApi, type KcClient } from "../api/admin-api";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ClientRolesModal from "../components/ClientRolesModal";
 import { useRoles } from "../auth/useRoles";
 import toast from "react-hot-toast";
 
@@ -105,6 +106,7 @@ export default function Modules() {
   const [showCreate, setShowCreate] = useState(false);
   const [editClient, setEditClient] = useState<KcClient | null>(null);
   const [toggleConfirm, setToggleConfirm] = useState<KcClient | null>(null);
+  const [rolesClient, setRolesClient] = useState<KcClient | null>(null);
 
   const { data: clients = [], isLoading, refetch } = useQuery({
     queryKey: ["clients"],
@@ -192,6 +194,13 @@ export default function Modules() {
               )}
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  onClick={() => setRolesClient(client)}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors mr-auto"
+                  title="Roles del módulo"
+                >
+                  <KeyRound size={14} /> Roles
+                </button>
                 {isAdmin && (
                   <>
                     <button
@@ -218,6 +227,7 @@ export default function Modules() {
 
       {showCreate && <ClientModal onSave={handleCreate} onClose={() => setShowCreate(false)} />}
       {editClient && <ClientModal initial={editClient} onSave={handleEdit} onClose={() => setEditClient(null)} />}
+      {rolesClient && <ClientRolesModal client={rolesClient} isAdmin={isAdmin} onClose={() => setRolesClient(null)} />}
       <ConfirmDialog
         open={!!toggleConfirm}
         title={toggleConfirm?.enabled ? "Deshabilitar módulo" : "Habilitar módulo"}

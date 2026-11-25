@@ -5,6 +5,7 @@ import { logAudit } from "../audit/audit.service";
 import { db } from "../db/client";
 import { gatewayClients } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { applyVstationPreset, getVstationPresetStatus } from "../config/vstation-roles";
 
 const router = Router();
 
@@ -14,6 +15,29 @@ const INTERNAL_CLIENTS = new Set([
   "account", "account-console", "admin-cli", "broker",
   "realm-management", "security-admin-console",
 ]);
+
+// ─── Preset de roles de vstation ──────────────────────────────────────────────
+// Rol de acceso (realm) + nivel y pestañas (roles del cliente vstation) que lee vstation.
+
+router.get("/presets/vstation", requireAdminOrViewer, async (_req, res, next) => {
+  try {
+    res.json(await getVstationPresetStatus());
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/presets/vstation/apply", requireAdmin, async (req, res, next) => {
+  try {
+    const result = await applyVstationPreset();
+    if (result.created.length > 0) {
+      await logAudit({ actor: req.jwtPayload!, action: "apply_vstation_roles_preset", entity: "client_role", entityId: result.status.clientId, detail: { created: result.created } });
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── Módulos (Clients) ────────────────────────────────────────────────────────
 
