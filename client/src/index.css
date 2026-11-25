@@ -11,10 +11,10 @@
     @apply bg-gray-900/60;
   }
   .dark .bg-gray-50\/50 {
-    background-color: rgb(17 24 39 / 0.55);
+    background-color: rgb(23 23 23 / 0.55);
   }
   .dark .bg-gray-100 {
-    background-color: rgb(55 65 81);
+    background-color: rgb(64 64 64);
   }
 
   .dark .text-gray-900 {
@@ -30,10 +30,10 @@
     @apply text-gray-300;
   }
   .dark .text-gray-500 {
-    color: rgb(156 163 175);
+    color: rgb(163 163 163);
   }
   .dark .text-gray-400 {
-    color: rgb(156 163 175);
+    color: rgb(163 163 163);
   }
 
   .dark .border-gray-100 {
@@ -49,7 +49,7 @@
   .dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]),
   .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
   .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-    border-color: rgb(55 65 81);
+    border-color: rgb(64 64 64);
   }
 
   .dark .hover\:bg-gray-50:hover,
@@ -58,20 +58,20 @@
   }
 
   .dark .hover\:bg-indigo-50:hover {
-    background-color: rgb(49 46 129 / 0.28);
+    background-color: rgb(20 83 45 / 0.28);
   }
   .dark .hover\:bg-red-50:hover {
     background-color: rgb(127 29 29 / 0.28);
   }
 
   .dark .bg-indigo-50 {
-    background-color: rgb(49 46 129 / 0.35);
+    background-color: rgb(20 83 45 / 0.35);
   }
   .dark .text-indigo-700 {
-    color: rgb(165 180 252);
+    color: rgb(134 239 172);
   }
   .dark .text-indigo-600 {
-    color: rgb(129 140 248);
+    color: rgb(74 222 128);
   }
 
   .dark .shadow-sm,
@@ -85,41 +85,41 @@
   .dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="hidden"]):not([type="file"]),
   .dark select,
   .dark textarea {
-    background-color: rgb(31 41 55);
-    color: rgb(243 244 246);
-    border-color: rgb(75 85 99);
+    background-color: rgb(38 38 38);
+    color: rgb(245 245 245);
+    border-color: rgb(82 82 82);
   }
 
   .dark input:disabled,
   .dark select:disabled,
   .dark textarea:disabled,
   .dark input.disabled\:bg-gray-50:disabled {
-    background-color: rgb(17 24 39 / 0.85);
-    color: rgb(156 163 175);
+    background-color: rgb(23 23 23 / 0.85);
+    color: rgb(163 163 163);
   }
 
   .dark input::placeholder,
   .dark textarea::placeholder {
-    color: rgb(107 114 128);
+    color: rgb(115 115 115);
   }
 
   .dark select option {
-    background-color: rgb(31 41 55);
-    color: rgb(243 244 246);
+    background-color: rgb(38 38 38);
+    color: rgb(245 245 245);
   }
 
   .dark input[type="checkbox"],
   .dark input[type="radio"] {
-    border-color: rgb(107 114 128);
-    background-color: rgb(31 41 55);
+    border-color: rgb(115 115 115);
+    background-color: rgb(38 38 38);
   }
 
   /* Recharts (Dashboard) */
   .dark .recharts-cartesian-axis-tick-value {
-    fill: rgb(156 163 175);
+    fill: rgb(163 163 163);
   }
   .dark .recharts-cartesian-grid line {
-    stroke: rgb(55 65 81);
+    stroke: rgb(64 64 64);
   }
 }
 
