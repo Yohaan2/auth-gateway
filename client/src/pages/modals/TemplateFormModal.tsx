@@ -45,6 +45,22 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
   });
 
   const [selectedRole, setSelectedRole] = useState("");
+  // Roles de módulo (cliente), p. ej. vstation → tab-mapa: un perfil puede combinar varios.
+  const kcClientsQ = useQuery({
+    queryKey: ["kc-clients-for-templates"],
+    queryFn: templatesApi.listKeycloakClients,
+    staleTime: 60_000,
+  });
+  const [selectedClient, setSelectedClient] = useState("");
+  const kcClientRolesQ = useQuery({
+    queryKey: ["kc-client-roles-for-templates", selectedClient],
+    queryFn: () => templatesApi.listKeycloakClientRoles(selectedClient),
+    enabled: !!selectedClient,
+    staleTime: 30_000,
+  });
+  const [selectedClientRoles, setSelectedClientRoles] = useState<string[]>([]);
+  const clientLabel = (uuid?: string | null) =>
+    kcClientsQ.data?.find((c) => c.id === uuid)?.clientId ?? "módulo";
   const [newClaim, setNewClaim] = useState({ claimKey: "", claimValue: "" });
   const [newPermission, setNewPermission] = useState<TemplatePermissionInput>({
     resource: "",
@@ -56,12 +72,28 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
   const addRole = () => {
     const kcRole = kcRolesQ.data?.find((r) => r.name === selectedRole);
     if (!kcRole) return;
-    if (roles.some((r) => r.roleName === kcRole.name)) {
+    if (roles.some((r) => !r.isClientRole && r.roleName === kcRole.name)) {
       toast.error("Ese rol ya fue agregado.");
       return;
     }
     setRoles((prev) => [...prev, { roleName: kcRole.name, roleId: kcRole.id, isClientRole: false }]);
     setSelectedRole("");
+  };
+
+  const addClientRoles = () => {
+    const picked = (kcClientRolesQ.data ?? []).filter((r) => selectedClientRoles.includes(r.name));
+    const fresh = picked.filter(
+      (kr) => !roles.some((r) => r.isClientRole && r.clientId === selectedClient && r.roleName === kr.name),
+    );
+    if (fresh.length === 0) {
+      toast.error(picked.length ? "Esos roles ya fueron agregados." : "Selecciona al menos un rol del módulo.");
+      return;
+    }
+    setRoles((prev) => [
+      ...prev,
+      ...fresh.map((kr) => ({ roleName: kr.name, roleId: kr.id, isClientRole: true, clientId: selectedClient })),
+    ]);
+    setSelectedClientRoles([]);
   };
 
   const addClaim = () => {
@@ -189,7 +221,7 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
                   className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 >
                   <option value="">
-                    {kcRolesQ.isLoading ? "Cargando roles de Keycloak..." : "Seleccionar rol de Keycloak..."}
+                    {kcRolesQ.isLoading ? "Cargando roles de Keycloak..." : "Seleccionar rol del realm..."}
                   </option>
                   {kcRolesQ.data?.map((r) => (
                     <option key={r.id} value={r.name}>
@@ -205,6 +237,62 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
                   <Plus size={16} />
                 </button>
               </div>
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                <p className="text-xs font-medium text-gray-700">
+                  Roles de módulo (p. ej. vstation: <code>operator</code>, <code>tab-camaras</code>, <code>tab-mapa</code>)
+                </p>
+                <select
+                  value={selectedClient}
+                  onChange={(e) => {
+                    setSelectedClient(e.target.value);
+                    setSelectedClientRoles([]);
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+                  <option value="">{kcClientsQ.isLoading ? "Cargando módulos..." : "Seleccionar módulo..."}</option>
+                  {kcClientsQ.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name ? `${c.name} (${c.clientId})` : c.clientId}
+                    </option>
+                  ))}
+                </select>
+                {selectedClient && (
+                  kcClientRolesQ.isLoading ? (
+                    <p className="text-xs text-gray-400">Cargando roles del módulo...</p>
+                  ) : (kcClientRolesQ.data?.length ?? 0) === 0 ? (
+                    <p className="text-xs text-gray-400">Este módulo no tiene roles. Créalos en Módulos → Roles.</p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 max-h-40 overflow-y-auto">
+                        {[...kcClientRolesQ.data!]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((r) => (
+                            <label key={r.id} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer" title={r.description}>
+                              <input
+                                type="checkbox"
+                                checked={selectedClientRoles.includes(r.name)}
+                                onChange={(e) =>
+                                  setSelectedClientRoles((prev) =>
+                                    e.target.checked ? [...prev, r.name] : prev.filter((n) => n !== r.name),
+                                  )
+                                }
+                                className="w-4 h-4 rounded text-indigo-600"
+                              />
+                              {r.name}
+                            </label>
+                          ))}
+                      </div>
+                      <button
+                        onClick={addClientRoles}
+                        type="button"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700"
+                      >
+                        <Plus size={14} /> Agregar roles del módulo
+                      </button>
+                    </>
+                  )
+                )}
+              </div>
               <div className="space-y-1">
                 {roles.length === 0 && <p className="text-xs text-gray-400">Sin roles asociados.</p>}
                 {roles.map((r, idx) => (
@@ -212,7 +300,16 @@ export default function TemplateFormModal({ initial, onClose, onSaved }: Props) 
                     key={`${r.roleName}-${idx}`}
                     className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
                   >
-                    <span className="text-gray-800">{r.roleName}</span>
+                    <span className="text-gray-800">
+                      {r.isClientRole ? (
+                        <>
+                          <span className="text-xs text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mr-1.5">{clientLabel(r.clientId)}</span>
+                          {r.roleName}
+                        </>
+                      ) : (
+                        r.roleName
+                      )}
+                    </span>
                     <button
                       onClick={() => setRoles((prev) => prev.filter((_, i) => i !== idx))}
                       className="text-gray-400 hover:text-red-600"

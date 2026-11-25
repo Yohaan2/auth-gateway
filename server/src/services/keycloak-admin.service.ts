@@ -338,11 +338,16 @@ class KeycloakAdminService {
     return this.req({ method: "POST", url: `/clients/${clientId}/roles`, data: payload });
   }
 
-  updateClientRole(clientId: string, roleName: string, payload: UpdateRolePayload): Promise<void> {
-    return this.req({
-      method: "PATCH",
+  async updateClientRole(clientId: string, roleName: string, payload: UpdateRolePayload): Promise<void> {
+    // La Admin API solo admite PUT con la representación completa (PATCH responde 405).
+    const current: KcRole = await this.req({
+      method: "GET",
       url: `/clients/${clientId}/roles/${encodeURIComponent(roleName)}`,
-      data: payload,
+    });
+    return this.req({
+      method: "PUT",
+      url: `/clients/${clientId}/roles/${encodeURIComponent(roleName)}`,
+      data: { ...current, ...payload, name: payload.name ?? current.name },
     });
   }
 

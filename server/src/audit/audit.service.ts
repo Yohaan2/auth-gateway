@@ -9,7 +9,7 @@ export type AuditAction =
   | "assign_client_role" | "remove_client_role"
   | "create_realm_role" | "update_realm_role" | "delete_realm_role"
   | "create_client" | "update_client" | "delete_client" | "enable_client" | "disable_client"
-  | "create_client_role" | "update_client_role" | "delete_client_role"
+  | "create_client_role" | "update_client_role" | "delete_client_role" | "apply_vstation_roles_preset"
   | "create_template" | "update_template" | "delete_template"
   | "create_tenant" | "update_tenant" | "delete_tenant"
   | "add_tenant_member" | "update_tenant_member_role" | "remove_tenant_member" | "provision_user" | "change_user_template" | "reapply_user_template" | "sync_user" | "send_activation_email"

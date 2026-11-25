@@ -63,6 +63,33 @@ router.get("/keycloak/roles", async (_req, res, next) => {
   }
 });
 
+// Módulos y sus roles de cliente (p. ej. vstation → tab-mapa) para plantillas/perfiles.
+const INTERNAL_CLIENTS = new Set([
+  "account", "account-console", "admin-cli", "broker",
+  "realm-management", "security-admin-console",
+]);
+
+router.get("/keycloak/clients", async (_req, res, next) => {
+  try {
+    const clients = await kcAdmin.listClients({ viewableOnly: true });
+    res.json(
+      clients
+        .filter((c) => !INTERNAL_CLIENTS.has(c.clientId))
+        .map((c) => ({ id: c.id, clientId: c.clientId, name: c.name })),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/keycloak/clients/:id/roles", async (req, res, next) => {
+  try {
+    res.json(await kcAdmin.getClientRoles(req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/keycloak/groups", async (_req, res, next) => {
   try {
     const groups = await kcAdmin.listGroups();
