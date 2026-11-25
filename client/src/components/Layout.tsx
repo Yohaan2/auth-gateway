@@ -7,7 +7,6 @@ import {
   AppWindow,
   LogOut,
   ChevronRight,
-  Shield,
   Menu,
   LayoutTemplate,
   Building2,
@@ -61,9 +60,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             sidebarExpanded ? "gap-3 px-5" : "justify-center px-0"
           }`}
         >
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Shield size={18} className="text-white" />
-          </div>
+          <img
+            src="/logo-optrax.png"
+            alt="Optrax"
+            className="w-8 h-8 rounded-lg bg-white p-0.5 object-contain flex-shrink-0"
+          />
           {sidebarExpanded && (
             <div className="min-w-0 overflow-hidden">
               <p className="font-semibold text-sm leading-tight truncate">Auth Manager</p>
@@ -140,9 +141,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu size={20} />
           </button>
-          <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center">
-            <Shield size={14} className="text-white" />
-          </div>
+          <img src="/logo-optrax.png" alt="Optrax" className="w-6 h-6 rounded bg-white p-px object-contain" />
           <span className="font-semibold text-gray-900 dark:text-gray-100">Auth Manager</span>
           <button
             type="button"
